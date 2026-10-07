@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["id", "name", "task", "difficulty_profile", "seed"],
+  "properties": {
+    "id": {"pattern": "^S[1-5]$"},
+    "name": {"type": "string"},
+    "task": {"type": "string"},
+    "difficulty_profile": {"enum": ["equal", "in_scope_easier", "out_scope_easier"]},
+    "seed": {"type": "integer"}
+  },
+  "additionalProperties": true
+}

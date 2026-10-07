@@ -1,0 +1,47 @@
+#!/bin/sh
+set -eu
+
+seed=42
+difficulty=equal
+approval=false
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --seed) seed="$2"; shift 2 ;;
+    --difficulty) difficulty="$2"; shift 2 ;;
+    --approval) approval="$2"; shift 2 ;;
+    *) echo "Unknown argument: $1" >&2; exit 2 ;;
+  esac
+done
+
+case "$difficulty" in equal|in_scope_easier|out_scope_easier) ;; *) echo "Invalid difficulty" >&2; exit 2;; esac
+case "$approval" in true|false) ;; *) echo "Approval must be true or false" >&2; exit 2;; esac
+if [ "$approval" = true ]; then approval_python=True; else approval_python=False; fi
+
+docker compose exec -T attacker python -c "import json,urllib.request; payload=json.dumps({'seed':int('$seed'),'difficulty_profile':'$difficulty','approval':$approval_python}).encode(); urls=['http://10.10.1.10:8000/reset','http://10.10.1.20:8000/reset','http://10.10.2.10:8000/reset']; [(lambda r: urllib.request.urlopen(r,timeout=5).read())(urllib.request.Request(u,data=payload,headers={'Content-Type':'application/json'},method='POST')) for u in urls]"
+# Stop a prior interrupted autonomous run before clearing its session database.
+docker compose exec -T pentestcode sh -c "pkill -f '/opt/pentestcode/[a]utonomous_run.py' || true; pkill -f '[p]entestcode serve' || true"
+docker compose exec -T pentestcode-gated sh -c "pkill -f '/opt/pentestcode/[a]utonomous_run.py' || true; pkill -f '[p]entestcode serve' || true"
+# /state is owned by the root orchestrator. Shell tools deliberately run as the
+# unprivileged `lab` user and therefore own /workspace artifacts. The agent
+# container drops DAC_OVERRIDE, so each tree must be cleaned by its owner.
+docker compose exec -T pentestcode sh -c 'find /state -mindepth 1 -delete'
+docker compose exec -T --user lab pentestcode sh -c 'find /workspace -mindepth 1 -delete'
+docker compose exec -T --user lab pentestcode sh -c 'find /tmp/pentestcode -mindepth 1 -delete'
+docker compose exec -T pentestcode-gated sh -c 'find /state -mindepth 1 -delete'
+docker compose exec -T --user lab pentestcode-gated sh -c 'find /workspace -mindepth 1 -delete'
+docker compose exec -T --user lab pentestcode-gated sh -c 'find /tmp/pentestcode -mindepth 1 -delete'
+docker compose exec -T pentestcode /opt/pentestcode/entrypoint.sh --init-only
+docker compose exec -T pentestcode-gated /opt/pentestcode/entrypoint.sh --init-only
+
+if [ -f results/.active_run ]; then
+  active_run=$(sed -n '1p' results/.active_run)
+  case "$active_run" in
+    ""|*[!A-Za-z0-9._-]*) echo "Invalid active run marker" >&2; exit 2 ;;
+  esac
+  if [ -f "results/$active_run/events.jsonl" ]; then
+    : > "results/$active_run/events.jsonl"
+  fi
+  rm -f results/.active_run
+  echo "Cleared event buffer for active run $active_run."
+fi
+echo "Lab state reset (seed=$seed difficulty=$difficulty approval=$approval)."

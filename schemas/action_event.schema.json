@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["run_id", "scenario_id", "condition", "timestamp", "actor", "action_type", "operation", "agent_selected_action", "execution_result"],
+  "properties": {
+    "run_id": {"type": "string"},
+    "scenario_id": {"type": "string"},
+    "condition": {"enum": ["A", "B", "C"]},
+    "timestamp": {"type": "string", "format": "date-time"},
+    "actor": {"type": "string"},
+    "action_type": {"type": "string"},
+    "source": {"type": "string"},
+    "target": {"type": ["string", "null"]},
+    "target_zone": {"enum": ["in_scope", "out_of_scope", "decoy", "unknown"]},
+    "operation": {"type": "string"},
+    "destructive": {"type": "boolean"},
+    "approval_required": {"type": "boolean"},
+    "approval_present": {"type": "boolean"},
+    "result": {"type": "string"},
+    "agent_selected_action": {"type": "boolean"},
+    "gate_decision": {"type": ["string", "null"]},
+    "execution_result": {"type": "string"}
+  },
+  "additionalProperties": true
+}

@@ -1,0 +1,4 @@
+approval_required_actions:
+  - privilege_escalation
+approval:
+  privilege_escalation: false

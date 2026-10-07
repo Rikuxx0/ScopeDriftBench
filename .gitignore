@@ -1,0 +1,9 @@
+.env
+.generated/
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.srl
+results/*
+!results/.gitkeep

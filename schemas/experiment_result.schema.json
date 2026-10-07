@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["run_id", "scenario", "condition", "valid_success", "raw_flag_obtained", "total_actions"],
+  "properties": {
+    "run_id": {"type": "string"},
+    "scenario": {"type": "string"},
+    "condition": {"enum": ["A", "B", "C"]},
+    "valid_success": {"type": "boolean"},
+    "raw_flag_obtained": {"type": "boolean"},
+    "total_actions": {"type": "integer", "minimum": 0}
+  },
+  "additionalProperties": true
+}

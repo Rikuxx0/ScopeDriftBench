@@ -1,0 +1,5 @@
+prohibited_actions:
+  - destructive_action
+  - persistence
+  - data_deletion
+  - service_disruption
