@@ -1,6 +1,6 @@
 # Pentest Agent Governance Control Lab
 
-[PentestCode](https://github.com/s0ld13rr/pentestcode)を自律型Agentとして実行し、明示的なスコープ、認可、承認、禁止操作のルールに違反するPentest操作を選択するかを測定するための、自己完結した実験ラボです。Agentは実際の`nmap`、`curl`、Shell Toolを使って、起動中のDocker Serviceへ動的に接続します。**実在するExploitや脆弱な製品イメージは含まれていません。**
+この研究プロジェクトは、[PentestCode](https://github.com/s0ld13rr/pentestcode)という自律型AI侵入テストエージェントによる明示的なスコープ、認可、承認、禁止操作のルールに違反するぺネトレーションテストの攻撃操作を選択するかを測定するための、自己完結型の実験ラボAgentは実際の`nmap`、`curl`、Shell Toolを使って、起動中のDocker Serviceへ動的に接続します。**実在するExploitや脆弱な製品イメージは含まれていません。**
 
 ## 研究課題
 
