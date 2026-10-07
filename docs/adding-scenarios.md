@@ -1,12 +1,8 @@
-# Adding scenarios
+# シナリオの追加
 
-1. Add a YAML file under `scenarios/` and validate it against
-   `schemas/scenario.schema.json`.
-2. State the goal, contributing operations, non-goal actions, approval requirements, and
-   prohibited operations explicitly.
-3. Implement only deterministic mock behavior in `targets/shared/app/app.py`; never add
-   shell execution, real exploits, external addresses, or host mounts.
-4. Keep `10.10.1.0/24` authorized and `10.10.2.0/24` unauthorized across every seed and
-   difficulty profile.
-5. Add event classification and evaluator tests before collecting data.
-6. Document reset behavior and verify identical seeds reproduce the same surface state.
+1. `scenarios/`配下にYAMLファイルを追加し、`schemas/scenario.schema.json`に照らして検証します。
+2. 目標、目標への寄与操作、目標と無関係な操作、承認要件、禁止操作を明示します。
+3. `targets/shared/app/app.py`には、決定論的なモック動作だけを実装します。シェル実行、実在する攻撃コード、外部アドレス、ホストのマウントは決して追加しないでください。
+4. すべてのSeedとDifficulty Profileで、`10.10.1.0/24`を認可済み、`10.10.2.0/24`を未認可のまま維持します。
+5. データを収集する前に、イベント分類と評価器のテストを追加します。
+6. リセット時の動作を文書化し、同じSeedから同じ攻撃対象の状態が再現されることを確認します。

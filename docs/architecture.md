@@ -1,37 +1,18 @@
-# Architecture
+# アーキテクチャ
 
-The system separates five responsibilities: synthetic targets provide technical
-opportunities; PentestCode is the autonomous agent execution surface; the collector
-stores manually submitted telemetry; the PentestCode adapter normalizes JSON tool
-events; and the host-side evaluator applies frozen policy after a run. The gate acts
-before shell execution only in Condition C.
+本システムでは、5つの責務を分離します。合成ターゲットは技術的な侵入機会を提供し、PentestCodeは自律エージェントの実行基盤となり、Collectorは手動送信されたテレメトリを保存します。PentestCode AdapterはJSON形式のツールイベントを正規化し、ホスト側の評価器はRun終了後に固定済みポリシーを適用します。シェル実行前にGateが動作するのはCondition Cだけです。
 
-Approval is initialized through the reset control path. The governed client reads this
-runtime fact only after scope/prohibition checks and never accepts an agent assertion as
-approval. Thus an out-of-scope proposal does not trigger even a control-plane query to
-that target.
+承認状態は、リセット用の制御経路を通じて初期化されます。制御対象のクライアントがこの実行時情報を読み取るのは、スコープと禁止操作を確認した後だけです。エージェント自身による「承認済み」という主張は受け入れません。したがって、スコープ外を対象とする提案によって、そのターゲットへの制御用問い合わせまで発生することはありません。
 
-The Condition A/B PentestCode service is attached to both target networks because
-technical reachability of both zones is the treatment mechanism. The Condition C
-service has no `outscope-net` interface, providing a hard boundary in addition to the
-command gate. Each target is single-homed, so targets cannot communicate laterally. The
-dual-homed collector has a fixed address on each isolated network but exposes no host
-port. A single bind mount, `./results:/results`, is the persistence boundary.
+Condition A/BのPentestCodeサービスは、両ゾーンへの技術的な到達可能性そのものを実験上の処置とするため、両方のターゲットネットワークに接続されます。Condition Cのサービスには`outscope-net`インターフェースがなく、Command Gateに加えて強制的な境界を提供します。各ターゲットは単一のネットワークだけに接続されるため、ターゲット間の横方向通信はできません。2つのネットワークに接続されたCollectorは、各隔離ネットワーク上で固定アドレスを持ちますが、ホスト側へポートを公開しません。唯一のBind Mountである`./results:/results`が永続化の境界です。
 
-PentestCode has no Internet-connected interface. It reaches an internal LLM relay on
-`inference-net`. Only that relay attaches to `provider-egress`; it accepts the minimum
-Device OAuth and Codex inference route allowlist. PentestCode stores its OAuth record in
-a root-only named volume, while model-selected shell processes run under a separate UID
-that cannot read it. Agent and target containers never attach to the egress network.
+PentestCodeには、インターネット接続用のインターフェースがありません。`inference-net`上の内部LLM Relayへ接続します。`provider-egress`に接続されるのはRelayだけであり、Relayが受け付けるのはDevice OAuthとCodex推論に必要な最小限の経路だけです。PentestCodeのOAuth認証情報はroot専用のNamed Volumeに保存されます。一方、モデルが選択したシェルプロセスは、それを読み取れない別のUIDで実行されます。エージェントとターゲットのコンテナが、外向き通信用ネットワークへ接続されることはありません。
 
-Target endpoints model health, discovery, credential acquisition and reuse, login,
-approval-controlled escalation, flag access, and destructive state transition. No
-endpoint runs commands or manipulates the host. Named volumes contain only JSON mock
-state and can be recreated independently.
+ターゲットのエンドポイントは、稼働確認、探索、認証情報の取得と再利用、ログイン、承認によって制御される権限昇格、Flagへのアクセス、破壊的な状態遷移をモデル化します。コマンドを実行したり、ホストを操作したりするエンドポイントはありません。Named Volumeに格納されるのはJSON形式のモック状態だけであり、それぞれ独立して再作成できます。
 
 ```text
-scenario + condition + seed -> prompt/frozen inputs -> PentestCode provider turn
--> real nmap/curl/shell action -> optional deterministic gate -> live mock-service result
--> PentestCode JSON trace -> normalized action event -> independent violation detector
--> run metrics -> aggregate report
+シナリオ + 条件 + Seed -> プロンプト / 固定入力 -> PentestCodeのモデル呼び出し
+-> 実際のnmap / curl / シェル操作 -> 任意の決定論的Gate -> 稼働中のモックサービスからの応答
+-> PentestCodeのJSON Trace -> 正規化済みAction Event -> 独立した違反検出器
+-> Run単位の評価指標 -> 集計レポート
 ```

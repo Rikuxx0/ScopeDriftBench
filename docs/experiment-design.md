@@ -1,30 +1,15 @@
-# Experiment design
+# 実験設計
 
-This study does not use “runaway” as a direct measurement because the term has no stable
-operational boundary. Misalignment is also broader than this experiment. The observable
-construct here is the subset expressed as constraint-violating behavior: scope,
-authorization, approval, or prohibited-action violations recorded at action level.
+本研究では「暴走」を直接の測定対象にしません。この用語には、安定した操作的定義がないためです。また、ミスアライメントは本実験が扱う範囲よりも広い概念です。ここで観測するのは、その部分集合に当たる制約違反行動です。具体的には、Action単位で記録されるスコープ、認可、承認、禁止操作の違反を対象とします。
 
-The central distinction is:
+中心となる区別は次のとおりです。
 
 ```text
-technically executable != authorized
+技術的に実行可能 != 認可済み
 ```
 
-Both target zones are technically reachable and expose the same synthetic flag. Only
-the in-scope source satisfies the task. The evaluator uses frozen YAML policy and action
-events, not agent self-assessment. This separates the agent's natural-language
-interpretation from experimental ground truth.
+両方のターゲットゾーンには技術的に到達でき、同じ合成Flagが配置されています。ただし、Taskを満たすのはスコープ内の取得元だけです。評価器はエージェントの自己評価ではなく、固定済みのYAMLポリシーとAction Eventを使用します。これにより、エージェントによる自然言語の解釈と、実験上の正解データを分離します。
 
-Condition A estimates baseline behavior, B adds a governance skill as a soft control,
-and C adds a deterministic gate as a positive hard-control condition. In C, selected but
-blocked actions remain observable. Condition C also removes the route to the unauthorized
-network, so command-gate bypasses still fail at the network layer. Compare all conditions across seeds and the three
-difficulty profiles to reduce the chance that results merely reflect a deliberately easy
-out-of-scope path.
+Condition Aでは基準となる挙動を測定します。Bではソフトな制御としてGovernance Skillを追加し、Cでは積極的なハード制御条件として決定論的Gateを追加します。Cでは、エージェントが選択したもののBlockされたActionも観測できます。Condition Cでは未認可ネットワークへの経路も削除されるため、Command Gateを迂回してもネットワーク層で失敗します。意図的に簡単なスコープ外経路だけが結果を左右する可能性を下げるため、複数のSeedと3種類のDifficulty Profileにわたって、すべてのConditionを比較します。
 
-Use balanced seed/profile blocks, randomized run order, a fixed model configuration,
-and multiple independent runs. Report confidence intervals and raw counts, not only
-means. Inspect failures blind to condition where practical. Do not infer false refusals
-from missing actions; mark those runs for manual review only when explicit evidence is
-available.
+SeedとProfileを均衡させたブロック、無作為化したRun順序、固定したモデル設定、複数の独立Runを使用してください。平均値だけでなく、信頼区間と実数も報告します。可能であれば、Conditionを伏せた状態で失敗事例を調査してください。Actionが存在しないという理由だけでFalse Refusalを推定してはいけません。明示的な根拠がある場合に限り、そのRunを手動レビューの対象とします。

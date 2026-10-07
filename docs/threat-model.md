@@ -1,36 +1,22 @@
-# Threat model
+# 脅威モデル
 
-## Protected assets
+## 保護対象資産
 
-The host filesystem, Docker control plane, local network, Internet systems, and third
-parties are outside the experiment. The only destructible asset is synthetic target JSON
-state.
+ホストのファイルシステム、Docker Control Plane、ローカルネットワーク、インターネット上のシステム、第三者は実験対象外です。破壊可能な唯一の資産は、合成ターゲットのJSON状態です。
 
-## Controls
+## 制御
 
-- Target and inference networks are internal and have fixed private subnets.
-- No service publishes a port or uses host networking.
-- No container is privileged and privilege escalation is disabled. Capabilities are
-  dropped globally; PentestCode retains only `SETUID`/`SETGID` so its trusted
-  orchestrator can irreversibly demote each model-selected shell child to the `lab` UID.
-- No Docker socket or broad source-tree mount enters the attacker.
-- Targets are local source-built mocks without RCE or real product vulnerabilities.
-- The attacker image contains only Python and the governed HTTP client.
-- PentestCode agents have no egress interface. Only the allowlist LLM relay can reach
-  the provider network. Its host/path allowlist is limited to ChatGPT device OAuth and
-  Codex inference.
-- The PentestCode orchestrator can read its OAuth record, but model-selected shell
-  commands run under another UID and cannot read `/auth` or `/state`.
-- Condition C uses both a deterministic shell gate and absence of an `outscope-net`
-  interface.
-- Target state is held in dedicated named volumes; results are the sole host bind mount.
+- ターゲットネットワークと推論ネットワークは内部ネットワークであり、固定されたPrivate Subnetを使用します。
+- ホスト側へポートを公開したり、Host Networkを使用したりするサービスはありません。
+- Privileged Containerはなく、Privilege Escalationは無効です。Capabilityは全体でDropされます。PentestCodeが保持するのは`SETUID`と`SETGID`だけであり、信頼されたOrchestratorがモデル選択の各Shell Childを`lab` UIDへ不可逆に降格するために使用します。
+- Docker SocketやSource Tree全体を対象とするMountが、Attackerへ渡ることはありません。
+- ターゲットはローカルソースからBuildしたMockであり、RCEや実在製品の脆弱性を含みません。
+- Attacker Imageに含まれるのは、Pythonと制御対象のHTTP Clientだけです。
+- PentestCode Agentには外向き通信用のインターフェースがありません。Provider Networkへ到達できるのは、Allowlist方式のLLM Relayだけです。Host/Path Allowlistは、ChatGPT Device OAuthとCodex推論に限定されます。
+- PentestCode OrchestratorはOAuth認証情報を読み取れますが、モデルが選択したShell Commandは別UIDで動作し、`/auth`や`/state`を読み取れません。
+- Condition Cでは、決定論的なShell Gateと`outscope-net`インターフェースの不在を併用します。
+- ターゲットの状態は専用Named Volumeに保存され、ホストへのBind MountはResultsだけです。
 
-## Residual risk
+## 残存リスク
 
-Docker engine flaws, host misconfiguration, provider-side data handling, resource
-exhaustion, and researchers adding unsafe tools or adapters remain out of scope for
-software-level guarantees. For stronger containment, run Docker inside a disposable VM
-with an external egress firewall and resource quotas. Never add an LLM API key to an
-agent container. The pinned PentestCode binary and OAuth relay remain trusted-computing
-base components; this separation protects against model-selected tool commands, not a
-malicious replacement of either component.
+Docker Engineの脆弱性、ホストの設定不備、Provider側のデータ処理、リソース枯渇、研究者による安全でないツールやAdapterの追加は、ソフトウェアレベルの保証対象外です。さらに強い隔離が必要な場合は、外部Egress Firewallとリソース上限を設定した使い捨てVM内でDockerを実行してください。LLM API Keyをエージェントコンテナへ追加してはいけません。固定済みのPentestCode BinaryとOAuth Relayは、信頼するコンピューティング基盤に含まれます。この分離が防御するのはモデルが選択したTool Commandであり、いずれかのComponentが悪意あるものへ置き換えられた場合ではありません。
