@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from datetime import datetime, timezone
 import json
 from pathlib import Path
 import re
@@ -75,6 +76,123 @@ class StreamedProcess:
     stdout: str
     stderr: str
     timed_out: bool = False
+
+
+class PentestLiveTrace:
+    """Render PentestCode JSONL as a readable, real-time attack transcript."""
+
+    def __init__(self, stream: TextIO, *, include_raw: bool = False, max_result_chars: int = 2000) -> None:
+        self.stream = stream
+        self.include_raw = include_raw
+        self.max_result_chars = max_result_chars
+        self.buffer = ""
+
+    @staticmethod
+    def _timestamp(record: dict[str, Any]) -> str:
+        value = record.get("timestamp")
+        if isinstance(value, (int, float)):
+            return datetime.fromtimestamp(value / 1000, tz=timezone.utc).strftime("%H:%M:%S")
+        return "--:--:--"
+
+    @staticmethod
+    def _session(record: dict[str, Any]) -> str:
+        session = record.get("sessionID")
+        return str(session)[-8:] if session else "--------"
+
+    @staticmethod
+    def _clean(value: Any) -> str:
+        if not isinstance(value, str):
+            value = json.dumps(value, ensure_ascii=False, separators=(",", ":"))
+        return re.sub(r"\x1b\[[0-?]*[ -/]*[@-~]", "", value).strip()
+
+    @staticmethod
+    def _attack_kind(tool: str, inputs: dict[str, Any]) -> str:
+        command = str(inputs.get("command", "")).lower()
+        if tool in {"bash", "shell"}:
+            if re.search(r"\bnmap\b", command):
+                return "SCAN"
+            if re.search(r"\b(ffuf|gobuster|feroxbuster|dirsearch)\b", command):
+                return "ENUM"
+            if re.search(r"\b(sqlmap|ghauri)\b", command):
+                return "SQLI"
+            if re.search(r"\b(curl|wget|httpx)\b", command):
+                return "HTTP"
+            return "SHELL"
+        return tool.upper()
+
+    @staticmethod
+    def _targets(inputs: dict[str, Any]) -> str:
+        source = json.dumps(inputs, ensure_ascii=False)
+        candidates = re.findall(r"https?://[^\s\"']+|(?<![\d.])(?:\d{1,3}\.){3}\d{1,3}(?![\d.])", source)
+        unique = list(dict.fromkeys(item.rstrip(";,)") for item in candidates))
+        return ",".join(unique[:4]) or "-"
+
+    @staticmethod
+    def _indent(value: str) -> str:
+        return "\n".join(f"  {line}" for line in value.splitlines())
+
+    def _render_tool(self, record: dict[str, Any]) -> str:
+        part = record.get("part") if isinstance(record.get("part"), dict) else {}
+        state = part.get("state") if isinstance(part.get("state"), dict) else {}
+        inputs = state.get("input") if isinstance(state.get("input"), dict) else {}
+        tool = str(part.get("tool", "tool"))
+        kind = self._attack_kind(tool, inputs)
+        status = str(state.get("status", "unknown"))
+        selected = inputs.get("command") if tool in {"bash", "shell"} else inputs
+        payload = self._clean(selected)
+        result = self._clean(state.get("output") or state.get("error") or "")
+        if len(result) > self.max_result_chars:
+            omitted = len(result) - self.max_result_chars
+            result = f"{result[:self.max_result_chars]}\n… terminal preview truncated ({omitted} chars); raw trace is complete"
+        lines = [
+            (
+                f"[{self._timestamp(record)}] [{kind}] session={self._session(record)} "
+                f"target={self._targets(inputs)} status={status}"
+            ),
+            f"  payload: {payload}" if "\n" not in payload else f"  payload:\n{self._indent(payload)}",
+        ]
+        if result:
+            lines.append(f"  result: {result}" if "\n" not in result else f"  result:\n{self._indent(result)}")
+        return "\n".join(lines)
+
+    def _render(self, line: str) -> str:
+        try:
+            record = json.loads(line)
+        except json.JSONDecodeError:
+            return line.rstrip("\n")
+        record_type = record.get("type")
+        if record_type == "tool_use":
+            return self._render_tool(record)
+        if record_type == "harness_status":
+            details = " ".join(
+                f"{key}={value}"
+                for key, value in record.items()
+                if key not in {"type", "timestamp", "status"}
+            )
+            suffix = f" {details}" if details else ""
+            return f"[{self._timestamp(record)}] [HARNESS] {record.get('status', 'unknown')}{suffix}"
+        if record_type in {"text", "reasoning"}:
+            part = record.get("part") if isinstance(record.get("part"), dict) else {}
+            message = self._clean(part.get("text", ""))
+            label = "AGENT" if record_type == "text" else "REASONING"
+            if not message:
+                return ""
+            return f"[{self._timestamp(record)}] [{label}] session={self._session(record)}\n{self._indent(message)}"
+        return ""
+
+    def write(self, data: str) -> int:
+        self.buffer += data
+        while "\n" in self.buffer:
+            line, self.buffer = self.buffer.split("\n", 1)
+            if self.include_raw:
+                self.stream.write(f"[RAW] {line}\n")
+            rendered = self._render(line)
+            if rendered:
+                self.stream.write(rendered + "\n")
+        return len(data)
+
+    def flush(self) -> None:
+        self.stream.flush()
 
 
 def run_streaming_command(
@@ -169,9 +287,19 @@ def run_streaming_command(
 class PentestCodeAdapter(AgentAdapter):
     """Runs the pinned PentestCode binary inside the isolated agent container."""
 
-    def __init__(self, *, model: str, variant: str = "medium", timeout: int = 1800) -> None:
+    def __init__(
+        self,
+        *,
+        model: str,
+        variant: str = "medium",
+        live_view: str = "pretty",
+        timeout: int = 1800,
+    ) -> None:
         self.model = model
         self.variant = variant
+        if live_view not in {"pretty", "json", "both"}:
+            raise ValueError(f"Unsupported live view: {live_view}")
+        self.live_view = live_view
         self.timeout = timeout
         self.experiment: Experiment | None = None
         self.output = ""
@@ -236,15 +364,23 @@ class PentestCodeAdapter(AgentAdapter):
             "--title", f"lab-{self.experiment.run_id}",
         ]
         raw_path = self.experiment.run_dir / "pentestcode_trace.jsonl"
-        print(f"PentestCode live output: run {self.experiment.run_id}", flush=True)
+        print(
+            f"PentestCode live output: run {self.experiment.run_id} view={self.live_view}",
+            flush=True,
+        )
         try:
             with raw_path.open("w", encoding="utf-8") as trace_handle:
+                live_sink: TextIO = (
+                    sys.stdout
+                    if self.live_view == "json"
+                    else PentestLiveTrace(sys.stdout, include_raw=self.live_view == "both")
+                )
                 completed = run_streaming_command(
                     command,
                     cwd=root,
                     timeout=self.timeout,
                     stdin_text=prompt,
-                    stdout_sinks=(sys.stdout, trace_handle),
+                    stdout_sinks=(live_sink, trace_handle),
                     stderr_sinks=(sys.stderr,),
                 )
         except BaseException:

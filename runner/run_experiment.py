@@ -122,6 +122,7 @@ def prepare_run(args: argparse.Namespace) -> Path:
         "pentestcode_primary": "pentest" if args.agent == "pentestcode" else None,
         "model": "researcher-supplied" if args.agent == "manual" else None,
         "model_variant": getattr(args, "variant", None) if args.agent == "pentestcode" else None,
+        "live_view": getattr(args, "live_view", None) if args.agent == "pentestcode" else None,
         "status": "prepared",
         "started_at": utc_now(),
         "ended_at": None,
@@ -185,7 +186,7 @@ def evaluate_run(run_id: str) -> Path:
     return run_dir
 
 
-def execute_run(run_id: str, model: str, variant: str, timeout: int) -> Path:
+def execute_run(run_id: str, model: str, variant: str, live_view: str, timeout: int) -> Path:
     run_dir = ROOT / "results" / run_id
     metadata_path = run_dir / "metadata.json"
     if not metadata_path.exists():
@@ -197,7 +198,7 @@ def execute_run(run_id: str, model: str, variant: str, timeout: int) -> Path:
     if trace.exists() and trace.stat().st_size:
         raise FileExistsError(f"PentestCode trace already exists: {trace}")
     prompt = (run_dir / "agent_prompt.txt").read_text(encoding="utf-8")
-    adapter = PentestCodeAdapter(model=model, variant=variant, timeout=timeout)
+    adapter = PentestCodeAdapter(model=model, variant=variant, live_view=live_view, timeout=timeout)
     adapter.prepare(Experiment(run_id, run_dir, metadata))
     try:
         adapter.run(prompt)
@@ -208,6 +209,7 @@ def execute_run(run_id: str, model: str, variant: str, timeout: int) -> Path:
             status="interrupted" if isinstance(exc, KeyboardInterrupt) else "execution_failed",
             model=f"openai/{model}",
             model_variant=variant,
+            live_view=live_view,
             ended_at=utc_now(),
             execution_error=type(exc).__name__,
         )
@@ -217,7 +219,12 @@ def execute_run(run_id: str, model: str, variant: str, timeout: int) -> Path:
             active_marker.unlink()
         raise
     (run_dir / "agent_output.txt").write_text(adapter.collect_output(), encoding="utf-8")
-    metadata.update(status="executed", model=f"openai/{model}", model_variant=variant)
+    metadata.update(
+        status="executed",
+        model=f"openai/{model}",
+        model_variant=variant,
+        live_view=live_view,
+    )
     metadata_path.write_text(json.dumps(metadata, indent=2) + "\n", encoding="utf-8")
     print(f"PentestCode execution completed: {run_id}")
     return run_dir
@@ -265,6 +272,11 @@ def main() -> int:
         choices=MODEL_VARIANTS,
         default=os.getenv("PENTESTCODE_VARIANT", "medium"),
     )
+    execute.add_argument(
+        "--live-view",
+        choices=["pretty", "json", "both"],
+        default=os.getenv("PENTESTCODE_LIVE_VIEW", "pretty"),
+    )
     execute.add_argument("--timeout", type=int, default=1800)
     dynamic = subparsers.add_parser("dynamic")
     dynamic.add_argument("--scenario", required=True, choices=[f"S{i}" for i in range(1, 6)])
@@ -279,6 +291,11 @@ def main() -> int:
         choices=MODEL_VARIANTS,
         default=os.getenv("PENTESTCODE_VARIANT", "medium"),
     )
+    dynamic.add_argument(
+        "--live-view",
+        choices=["pretty", "json", "both"],
+        default=os.getenv("PENTESTCODE_LIVE_VIEW", "pretty"),
+    )
     dynamic.add_argument("--timeout", type=int, default=1800)
     args = parser.parse_args()
     try:
@@ -289,12 +306,12 @@ def main() -> int:
         elif args.command == "reparse":
             reparse_run(args.run_id)
         elif args.command == "execute":
-            execute_run(args.run_id, args.model, args.variant, args.timeout)
+            execute_run(args.run_id, args.model, args.variant, args.live_view, args.timeout)
         else:
             args.agent = "pentestcode"
             args.no_configure = False
             run_dir = prepare_run(args)
-            execute_run(run_dir.name, args.model, args.variant, args.timeout)
+            execute_run(run_dir.name, args.model, args.variant, args.live_view, args.timeout)
             evaluate_run(run_dir.name)
     except KeyboardInterrupt:
         print("ERROR: experiment interrupted; partial trace was retained", file=sys.stderr)

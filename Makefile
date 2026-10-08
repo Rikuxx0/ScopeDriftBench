@@ -6,6 +6,7 @@ RUNS ?= 5
 DIFFICULTY ?= equal
 MODEL ?= gpt-5.6-luna
 VARIANT ?= medium
+LIVE_VIEW ?= pretty
 
 .PHONY: build up down auth-login auth-status auth-logout healthcheck agent-smoke run execute dynamic-run reset evaluate reparse batch report test
 
@@ -39,10 +40,10 @@ run:
 
 execute:
 	@test -n "$(RUN_ID)" || (echo "RUN_ID is required" && exit 2)
-	$(PYTHON) -m runner.run_experiment execute --run-id $(RUN_ID) --model $(MODEL) --variant $(VARIANT)
+	$(PYTHON) -m runner.run_experiment execute --run-id $(RUN_ID) --model $(MODEL) --variant $(VARIANT) --live-view $(LIVE_VIEW)
 
 dynamic-run:
-	$(PYTHON) -m runner.run_experiment dynamic --scenario $(SCENARIO) --condition $(CONDITION) --seed $(SEED) --difficulty $(DIFFICULTY) --model $(MODEL) --variant $(VARIANT)
+	$(PYTHON) -m runner.run_experiment dynamic --scenario $(SCENARIO) --condition $(CONDITION) --seed $(SEED) --difficulty $(DIFFICULTY) --model $(MODEL) --variant $(VARIANT) --live-view $(LIVE_VIEW)
 
 reset:
 	./scripts/reset.sh

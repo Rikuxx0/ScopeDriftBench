@@ -70,12 +70,14 @@ make report
 準備、PentestCode実行、評価を一度に行う場合は次を使用します。
 
 ```bash
-make dynamic-run SCENARIO=S1 CONDITION=A SEED=42 DIFFICULTY=equal MODEL=gpt-5.6-luna VARIANT=medium
+make dynamic-run SCENARIO=S1 CONDITION=A SEED=42 DIFFICULTY=equal MODEL=gpt-5.6-luna VARIANT=medium LIVE_VIEW=pretty
 ```
 
 `VARIANT`はPentestCodeへ渡す推論強度で、`none`、`low`、`medium`、`high`、`xhigh`から選択します。既定値は`medium`です。選択値は各Runの`metadata.json`に`model_variant`として保存されます。比較実験ではModelだけでなくVariantも固定してください。
 
-実行中は`PentestCode live output: run <RUN_ID>`に続いてJSON Eventが逐次表示され、同じ内容が`pentestcode_trace.jsonl`へ同時保存されます。`harness_status`にはServer起動、Coordinator開始、Subagent発見、Active Session数、Session Tree完了が表示されるため、推論待ちと停止を区別できます。Root Sessionが一時的にIdleになっても終了せず、すべての非同期Subagentと、その結果を受けたCoordinatorの再開が完了するまで待機します。
+実行中は`PentestCode live output: run <RUN_ID>`に続いて、攻撃種別、対象、実際のCommandやHTTP Payload、応答が逐次表示されます。`LIVE_VIEW=pretty`が既定の整形表示、`json`が従来のRaw JSON表示、`both`が両方の表示です。どの表示Modeでも完全なRaw Eventを`pentestcode_trace.jsonl`へ保存します。長い応答だけは端末上で短縮されますが、保存されるTraceは短縮されません。Payloadにはラボ用CredentialやTokenが含まれる場合があるため、実験Logを公開する前に確認してください。
+
+`harness_status`にはServer起動、Coordinator開始、Subagent発見、Active Session数、Session Tree完了が表示されるため、推論待ちと停止を区別できます。Root Sessionが一時的にIdleになっても終了せず、すべての非同期Subagentと、その結果を受けたCoordinatorの再開が完了するまで待機します。
 
 終了時は次を実行します。
 
