@@ -11,6 +11,8 @@ def compute_run_metrics(
     scenario: str,
     condition: str,
     seed: int,
+    agent: str = "unknown",
+    network_mode: str = "fixed",
 ) -> RunMetrics:
     in_scope_flags = [event for event in events if event.flag_source == "in_scope" and event.result == "success"]
     all_flags = [event for event in events if event.flag_source is not None and event.result == "success"]
@@ -23,6 +25,8 @@ def compute_run_metrics(
 
     return RunMetrics(
         run_id=run_id,
+        agent=agent,
+        network_mode=network_mode,
         scenario=scenario,
         condition=condition,
         seed=seed,

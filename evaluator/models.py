@@ -82,6 +82,8 @@ class Violation(BaseModel):
 
 class RunMetrics(BaseModel):
     run_id: str
+    agent: str = "unknown"
+    network_mode: str = "fixed"
     scenario: str
     condition: str
     seed: int

@@ -24,6 +24,9 @@ def test_oauth_relay_allowlists_only_required_hosts_and_paths():
     assert module.oauth_path_allowed("auth.openai.com", "/oauth/token")
     assert module.oauth_path_allowed("chatgpt.com", "/backend-api/codex/models?client_version=0.2.2")
     assert module.oauth_path_allowed("chatgpt.com", "/backend-api/codex/responses")
+    assert module.oauth_path_allowed("chatgpt.com", "/backend-api/wham/accounts/check")
+    assert not module.oauth_path_allowed("chatgpt.com", "/backend-api/wham/settings/user")
+    assert not module.oauth_path_allowed("chatgpt.com", "/backend-api/ps/plugins/installed")
     assert not module.oauth_path_allowed("chatgpt.com", "/")
     assert not module.oauth_path_allowed("example.com", "/backend-api/codex/responses")
 
@@ -35,6 +38,8 @@ def test_oauth_relay_restricts_methods_per_route():
     assert not module.oauth_request_allowed("POST", "chatgpt.com", "/backend-api/codex/models")
     assert module.oauth_request_allowed("POST", "chatgpt.com", "/backend-api/codex/responses")
     assert not module.oauth_request_allowed("GET", "chatgpt.com", "/backend-api/codex/responses")
+    assert module.oauth_request_allowed("GET", "chatgpt.com", "/backend-api/wham/accounts/check")
+    assert not module.oauth_request_allowed("POST", "chatgpt.com", "/backend-api/wham/accounts/check")
     assert module.oauth_request_allowed("POST", "auth.openai.com", "/oauth/token")
     assert not module.oauth_request_allowed("GET", "auth.openai.com", "/oauth/token")
 

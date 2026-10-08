@@ -9,7 +9,7 @@ from statistics import fmean
 
 
 SUMMARY_FIELDS = [
-    "run_id", "scenario", "condition", "seed", "valid_success",
+    "run_id", "agent", "network_mode", "scenario", "condition", "seed", "valid_success",
     "raw_flag_obtained", "violations", "scope_violations",
     "authorization_violations", "approval_violations", "prohibited_actions",
     "total_actions", "tool_calls", "goal_irrelevant_actions",
@@ -20,7 +20,15 @@ SUMMARY_FIELDS = [
 def collect_metrics(results_dir: Path) -> list[dict]:
     rows = []
     for path in sorted(results_dir.glob("*/metrics.json")):
-        rows.append(json.loads(path.read_text(encoding="utf-8")))
+        row = json.loads(path.read_text(encoding="utf-8"))
+        metadata_path = path.with_name("metadata.json")
+        if metadata_path.exists() and ("agent" not in row or "network_mode" not in row):
+            metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+            row.setdefault("agent", metadata.get("agent", "unknown"))
+            row.setdefault("network_mode", metadata.get("network_mode", "fixed"))
+        row.setdefault("agent", "unknown")
+        row.setdefault("network_mode", "fixed")
+        rows.append(row)
     return rows
 
 
@@ -32,15 +40,17 @@ def write_csv(path: Path, rows: list[dict], fields: list[str]) -> None:
 
 
 def aggregate(rows: list[dict]) -> list[dict]:
-    groups: dict[str, list[dict]] = defaultdict(list)
+    groups: dict[tuple[str, str, str], list[dict]] = defaultdict(list)
     for row in rows:
-        groups[row["condition"]].append(row)
+        groups[(row.get("agent", "unknown"), row.get("network_mode", "fixed"), row["condition"])].append(row)
     output = []
-    for condition, items in sorted(groups.items()):
+    for (agent, network_mode, condition), items in sorted(groups.items()):
         total_actions = sum(item["total_actions"] for item in items)
         scope_events = sum(item["scope_violations"] for item in items)
         action_goals = [item["actions_to_goal"] for item in items if item["actions_to_goal"] is not None]
         output.append({
+            "agent": agent,
+            "network_mode": network_mode,
             "condition": condition,
             "runs": len(items),
             "task_success_rate": fmean(bool(item["valid_success"]) for item in items),
@@ -62,7 +72,7 @@ def generate_plots(rows: list[dict], output_dir: Path) -> None:
     aggregates = aggregate(rows)
     if not aggregates:
         return
-    conditions = [row["condition"] for row in aggregates]
+    conditions = [f"{row['agent']}:{row['network_mode']}:{row['condition']}" for row in aggregates]
     series = {
         "task_success_rate": "Task Success Rate vs Condition",
         "run_violation_rate": "Violation Rate vs Condition",
@@ -80,9 +90,13 @@ def generate_plots(rows: list[dict], output_dir: Path) -> None:
         plt.close(fig)
     fig, ax = plt.subplots()
     for row in aggregates:
-        ax.scatter(row["run_violation_rate"], row["task_success_rate"], label=row["condition"])
+        ax.scatter(
+            row["run_violation_rate"],
+            row["task_success_rate"],
+            label=f"{row['agent']}:{row['network_mode']}:{row['condition']}",
+        )
     ax.set(xlabel="Run violation rate", ylabel="Valid task success rate", title="Pentest Capability vs Constraint Violation")
-    ax.legend(title="Condition")
+    ax.legend(title="Agent:Network:Condition")
     fig.tight_layout()
     fig.savefig(output_dir / "capability_vs_violation.png")
     plt.close(fig)
@@ -98,7 +112,7 @@ def main() -> int:
     write_csv(root / "summary.csv", rows, SUMMARY_FIELDS)
     aggregate_rows = aggregate(rows)
     aggregate_fields = list(aggregate_rows[0]) if aggregate_rows else [
-        "condition", "runs", "task_success_rate", "raw_flag_rate",
+        "agent", "network_mode", "condition", "runs", "task_success_rate", "raw_flag_rate",
         "run_violation_rate", "scope_violation_rate", "approval_violation_rate",
         "prohibited_action_rate", "mean_actions_to_goal",
     ]

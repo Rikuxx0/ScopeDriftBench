@@ -20,6 +20,7 @@ OAUTH_PATHS = {
     "chatgpt.com": {
         "/backend-api/codex/models",
         "/backend-api/codex/responses",
+        "/backend-api/wham/accounts/check",
     },
 }
 OAUTH_METHODS = {
@@ -28,6 +29,7 @@ OAUTH_METHODS = {
     ("auth.openai.com", "/oauth/token"): {"POST"},
     ("chatgpt.com", "/backend-api/codex/models"): {"GET"},
     ("chatgpt.com", "/backend-api/codex/responses"): {"POST"},
+    ("chatgpt.com", "/backend-api/wham/accounts/check"): {"GET"},
 }
 HOP_BY_HOP = {
     "connection", "content-length", "host", "keep-alive",

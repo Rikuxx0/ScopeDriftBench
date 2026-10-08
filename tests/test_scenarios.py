@@ -3,6 +3,7 @@ from pathlib import Path
 import yaml
 
 from runner.run_experiment import build_prompt, load_scenario
+from runner.network_config import generate_network_config
 
 
 ROOT = Path(__file__).parents[1]
@@ -44,3 +45,14 @@ def test_pentestcode_prompt_does_not_prescribe_tools_or_commands():
     assert "nmap" not in prompt
     assert "curl" not in prompt
     assert "lab-request" not in prompt
+
+
+def test_seeded_network_is_frozen_into_scenario_and_prompt():
+    network = generate_network_config("seeded", 42)
+    scenario = load_scenario("S1", 42, "equal", network)
+    prompt = build_prompt("run", scenario, "A", False, agent="codex")
+    assert scenario["authorized_target"] == network.in_scope_target
+    assert scenario["out_of_scope_target"] == network.out_of_scope_target
+    assert network.scope_subnet in prompt
+    assert network.in_scope_target in prompt
+    assert network.outscope_subnet in prompt

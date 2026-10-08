@@ -1,6 +1,9 @@
 #!/bin/sh
 set -eu
 
+root=$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)
+compose="$root/scripts/compose.sh"
+
 seed=42
 difficulty=equal
 approval=false
@@ -17,21 +20,31 @@ case "$difficulty" in equal|in_scope_easier|out_scope_easier) ;; *) echo "Invali
 case "$approval" in true|false) ;; *) echo "Approval must be true or false" >&2; exit 2;; esac
 if [ "$approval" = true ]; then approval_python=True; else approval_python=False; fi
 
-docker compose exec -T attacker python -c "import json,urllib.request; payload=json.dumps({'seed':int('$seed'),'difficulty_profile':'$difficulty','approval':$approval_python}).encode(); urls=['http://10.10.1.10:8000/reset','http://10.10.1.20:8000/reset','http://10.10.2.10:8000/reset']; [(lambda r: urllib.request.urlopen(r,timeout=5).read())(urllib.request.Request(u,data=payload,headers={'Content-Type':'application/json'},method='POST')) for u in urls]"
+"$compose" exec -T attacker python -c "import json,urllib.request; payload=json.dumps({'seed':int('$seed'),'difficulty_profile':'$difficulty','approval':$approval_python}).encode(); urls=['http://in-scope-target:8000/reset','http://decoy-service:8000/reset','http://out-of-scope-target:8000/reset']; [(lambda r: urllib.request.urlopen(r,timeout=5).read())(urllib.request.Request(u,data=payload,headers={'Content-Type':'application/json'},method='POST')) for u in urls]"
 # Stop a prior interrupted autonomous run before clearing its session database.
-docker compose exec -T pentestcode sh -c "pkill -f '/opt/pentestcode/[a]utonomous_run.py' || true; pkill -f '[p]entestcode serve' || true"
-docker compose exec -T pentestcode-gated sh -c "pkill -f '/opt/pentestcode/[a]utonomous_run.py' || true; pkill -f '[p]entestcode serve' || true"
+"$compose" exec -T pentestcode sh -c "pkill -f '/opt/pentestcode/[a]utonomous_run.py' || true; pkill -f '[p]entestcode serve' || true"
+"$compose" exec -T pentestcode-gated sh -c "pkill -f '/opt/pentestcode/[a]utonomous_run.py' || true; pkill -f '[p]entestcode serve' || true"
+"$compose" exec -T codex sh -c "pkill -f '/opt/codex-lab/[c]odex_run.py' || true; pkill -f '[c]odex exec' || true"
+"$compose" exec -T codex-gated sh -c "pkill -f '/opt/codex-lab/[c]odex_run.py' || true; pkill -f '[c]odex exec' || true"
 # /state is owned by the root orchestrator. Shell tools deliberately run as the
 # unprivileged `lab` user and therefore own /workspace artifacts. The agent
 # container drops DAC_OVERRIDE, so each tree must be cleaned by its owner.
-docker compose exec -T pentestcode sh -c 'find /state -mindepth 1 -delete'
-docker compose exec -T --user lab pentestcode sh -c 'find /workspace -mindepth 1 -delete'
-docker compose exec -T --user lab pentestcode sh -c 'find /tmp/pentestcode -mindepth 1 -delete'
-docker compose exec -T pentestcode-gated sh -c 'find /state -mindepth 1 -delete'
-docker compose exec -T --user lab pentestcode-gated sh -c 'find /workspace -mindepth 1 -delete'
-docker compose exec -T --user lab pentestcode-gated sh -c 'find /tmp/pentestcode -mindepth 1 -delete'
-docker compose exec -T pentestcode /opt/pentestcode/entrypoint.sh --init-only
-docker compose exec -T pentestcode-gated /opt/pentestcode/entrypoint.sh --init-only
+"$compose" exec -T pentestcode sh -c 'find /state -mindepth 1 -delete'
+"$compose" exec -T --user lab pentestcode sh -c 'find /workspace -mindepth 1 -delete'
+"$compose" exec -T --user lab pentestcode sh -c 'find /tmp/pentestcode -mindepth 1 -delete'
+"$compose" exec -T pentestcode-gated sh -c 'find /state -mindepth 1 -delete'
+"$compose" exec -T --user lab pentestcode-gated sh -c 'find /workspace -mindepth 1 -delete'
+"$compose" exec -T --user lab pentestcode-gated sh -c 'find /tmp/pentestcode -mindepth 1 -delete'
+"$compose" exec -T codex sh -c 'find /state -mindepth 1 -delete'
+"$compose" exec -T --user lab codex sh -c 'find /workspace -mindepth 1 -delete'
+"$compose" exec -T --user lab codex sh -c 'find /tmp/codex -mindepth 1 -delete'
+"$compose" exec -T codex-gated sh -c 'find /state -mindepth 1 -delete'
+"$compose" exec -T --user lab codex-gated sh -c 'find /workspace -mindepth 1 -delete'
+"$compose" exec -T --user lab codex-gated sh -c 'find /tmp/codex -mindepth 1 -delete'
+"$compose" exec -T pentestcode /opt/pentestcode/entrypoint.sh --init-only
+"$compose" exec -T pentestcode-gated /opt/pentestcode/entrypoint.sh --init-only
+"$compose" exec -T codex /opt/codex-lab/entrypoint.sh --init-only
+"$compose" exec -T codex-gated /opt/codex-lab/entrypoint.sh --init-only
 
 if [ -f results/.active_run ]; then
   active_run=$(sed -n '1p' results/.active_run)

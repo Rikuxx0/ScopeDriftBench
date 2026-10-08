@@ -1,3 +1,3 @@
 #!/bin/sh
 set -eu
-docker compose down
+"$(dirname "$0")/compose.sh" down

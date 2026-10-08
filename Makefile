@@ -7,6 +7,8 @@ DIFFICULTY ?= equal
 MODEL ?= gpt-5.6-luna
 VARIANT ?= medium
 LIVE_VIEW ?= pretty
+AGENT ?= pentestcode
+NETWORK_MODE ?= seeded
 
 .PHONY: build up down auth-login auth-status auth-logout healthcheck agent-smoke run execute dynamic-run reset evaluate reparse batch report test
 
@@ -14,16 +16,28 @@ build:
 	./scripts/build.sh
 
 up:
-	./scripts/up.sh
+	./scripts/up.sh --network-mode $(NETWORK_MODE) --seed $(SEED)
 
 auth-login:
-	docker compose exec pentestcode pentestcode auth login --provider openai --method "ChatGPT Pro/Plus (headless)"
+ifeq ($(AGENT),codex)
+	./scripts/compose.sh exec codex codex login --device-auth
+else
+	./scripts/compose.sh exec pentestcode pentestcode auth login --provider openai --method "ChatGPT Pro/Plus (headless)"
+endif
 
 auth-status:
-	docker compose exec -T pentestcode pentestcode auth list
+ifeq ($(AGENT),codex)
+	./scripts/compose.sh exec -T codex codex login status
+else
+	./scripts/compose.sh exec -T pentestcode pentestcode auth list
+endif
 
 auth-logout:
-	docker compose exec pentestcode pentestcode auth logout openai
+ifeq ($(AGENT),codex)
+	./scripts/compose.sh exec codex codex logout
+else
+	./scripts/compose.sh exec pentestcode pentestcode auth logout openai
+endif
 
 down:
 	./scripts/down.sh
@@ -32,18 +46,20 @@ healthcheck:
 	./scripts/healthcheck.sh
 
 agent-smoke:
-	docker compose exec -T pentestcode pentestcode --version
-	docker compose exec -T pentestcode nmap -sT -n -Pn -p 8000 10.10.1.10 10.10.2.10
+	./scripts/compose.sh exec -T pentestcode pentestcode --version
+	./scripts/compose.sh exec -T codex codex --version
+	./scripts/compose.sh exec -T pentestcode nmap -sT -n -Pn -p 8000 in-scope-target out-of-scope-target
+	./scripts/compose.sh exec -T codex nmap -sT -n -Pn -p 8000 in-scope-target out-of-scope-target
 
 run:
-	$(PYTHON) -m runner.run_experiment prepare --scenario $(SCENARIO) --condition $(CONDITION) --seed $(SEED) --difficulty $(DIFFICULTY) --agent pentestcode
+	$(PYTHON) -m runner.run_experiment prepare --scenario $(SCENARIO) --condition $(CONDITION) --seed $(SEED) --network-mode $(NETWORK_MODE) --difficulty $(DIFFICULTY) --agent $(AGENT) --variant $(VARIANT) --live-view $(LIVE_VIEW)
 
 execute:
 	@test -n "$(RUN_ID)" || (echo "RUN_ID is required" && exit 2)
 	$(PYTHON) -m runner.run_experiment execute --run-id $(RUN_ID) --model $(MODEL) --variant $(VARIANT) --live-view $(LIVE_VIEW)
 
 dynamic-run:
-	$(PYTHON) -m runner.run_experiment dynamic --scenario $(SCENARIO) --condition $(CONDITION) --seed $(SEED) --difficulty $(DIFFICULTY) --model $(MODEL) --variant $(VARIANT) --live-view $(LIVE_VIEW)
+	$(PYTHON) -m runner.run_experiment dynamic --scenario $(SCENARIO) --condition $(CONDITION) --seed $(SEED) --network-mode $(NETWORK_MODE) --difficulty $(DIFFICULTY) --agent $(AGENT) --model $(MODEL) --variant $(VARIANT) --live-view $(LIVE_VIEW)
 
 reset:
 	./scripts/reset.sh
@@ -57,7 +73,7 @@ reparse:
 	$(PYTHON) -m runner.run_experiment reparse --run-id $(RUN_ID)
 
 batch:
-	$(PYTHON) -m runner.batch --scenarios $(SCENARIO) --conditions A,B,C --seeds $$(seq -s, 1 $(RUNS)) --difficulty $(DIFFICULTY)
+	$(PYTHON) -m runner.batch --scenarios $(SCENARIO) --conditions A,B,C --seeds $$(seq -s, 1 $(RUNS)) --network-mode $(NETWORK_MODE) --difficulty $(DIFFICULTY) --agent $(AGENT) --variant $(VARIANT) --live-view $(LIVE_VIEW)
 
 report:
 	$(PYTHON) -m evaluator.report

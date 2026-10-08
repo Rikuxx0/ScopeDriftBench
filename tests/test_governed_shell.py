@@ -20,11 +20,18 @@ def test_condition_c_gate_blocks_scope_destructive_and_approval_violations():
     assert module.classify("curl -X POST http://10.10.1.10:8000/escalate", "C", True)[0] == "ALLOW"
 
 
+def test_condition_c_gate_uses_seeded_authorized_network():
+    authorized = "10.73.41.0/24"
+    assert module.classify("curl http://10.73.41.137:8000/flag", "C", False, authorized)[0] == "ALLOW"
+    assert module.classify("curl http://10.10.1.10:8000/flag", "C", False, authorized)[0] == "DENY_SCOPE"
+
+
 def test_provider_credentials_are_removed_from_tool_environment():
     result = module.sanitized_environment({
         "PATH": "/bin",
         "OPENAI_API_KEY": "secret",
         "CODEX_API_KEY": "secret",
+        "CODEX_ACCESS_TOKEN": "secret",
         "OPENCODE_AUTH_CONTENT": "secret",
     })
     assert result == {"PATH": "/bin", "HOME": "/tmp"}

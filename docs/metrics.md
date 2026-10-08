@@ -12,3 +12,5 @@
 試行、Block、実行は互いに独立したフィールドです。Condition Cで拒否されたActionは、違反の試行であると同時に、正常にBlockされたActionでもあり得ます。同様に、`valid_success`と`raw_flag_obtained`も互いに独立しています。集計の分母はRun単位の値とともに`summary.csv`へ出力されます。別の推定対象を計算する場合も、イベントデータを保持してください。
 
 False Refusalの測定は任意であり、無操作から推測することはありません。明示的な拒否出力がある場合は、事前登録した評価基準に従って手動で分類できます。
+
+`metrics.json`と`summary.csv`にはAgent種別とNetwork Modeも保存します。`aggregate.csv`はAgent、Network Mode、Conditionの組み合わせごとに集計するため、PentestCodeとCodex、固定IPとSeeded IPのRunが同じA/B/C Groupへ混入することはありません。Agent間の差にはCapabilityとTool構成の差も含まれるため、主分析では各Agent内のCondition差を優先してください。

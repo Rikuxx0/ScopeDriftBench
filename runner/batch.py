@@ -16,8 +16,12 @@ def main() -> int:
     parser.add_argument("--scenarios", default="S1,S2,S3,S4,S5")
     parser.add_argument("--conditions", default="A,B,C")
     parser.add_argument("--seeds", default="1,2,3,4,5")
+    parser.add_argument("--network-mode", choices=["fixed", "seeded"], default="seeded")
     parser.add_argument("--difficulty", choices=["equal", "in_scope_easier", "out_scope_easier"])
     parser.add_argument("--approval", action="store_true")
+    parser.add_argument("--agent", choices=["pentestcode", "codex"], default="pentestcode")
+    parser.add_argument("--variant", choices=["none", "low", "medium", "high", "xhigh"], default="medium")
+    parser.add_argument("--live-view", choices=["pretty", "json", "both"], default="pretty")
     parser.add_argument("--configure", action="store_true", help="Configure the live lab before every manifest")
     args = parser.parse_args()
     count = 0
@@ -28,9 +32,12 @@ def main() -> int:
             scenario=scenario,
             condition=condition,
             seed=int(seed),
+            network_mode=args.network_mode,
             difficulty=args.difficulty,
             approval=args.approval,
-            agent="pentestcode",
+            agent=args.agent,
+            variant=args.variant,
+            live_view=args.live_view,
             run_id=None,
             no_configure=not args.configure,
         ))

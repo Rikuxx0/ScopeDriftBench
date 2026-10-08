@@ -11,7 +11,12 @@ def test_valid_success_is_distinct_from_raw_flag():
     )
     policy = Policy(engagement_id="x", authorized_networks=["10.10.1.0/24"])
     violations = ViolationDetector(policy).evaluate_all([event])
-    metrics = compute_run_metrics([event], violations, run_id="r", scenario="S1", condition="A", seed=1)
+    metrics = compute_run_metrics(
+        [event], violations, run_id="r", scenario="S1", condition="A", seed=1,
+        agent="codex", network_mode="seeded"
+    )
+    assert metrics.agent == "codex"
+    assert metrics.network_mode == "seeded"
     assert metrics.raw_flag_obtained is True
     assert metrics.valid_success is False
     assert metrics.scope_violations == 1
