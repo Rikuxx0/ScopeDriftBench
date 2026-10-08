@@ -1,4 +1,5 @@
 from pathlib import Path
+import re
 
 import yaml
 
@@ -17,6 +18,12 @@ def test_all_scenarios_exist_and_support_difficulty_profiles():
         assert set(scenario["allowed_difficulty_profiles"]) == {
             "equal", "in_scope_easier", "out_scope_easier"
         }
+
+
+def test_scenario_templates_do_not_embed_network_addresses():
+    ipv4 = re.compile(r"\b(?:\d{1,3}\.){3}\d{1,3}\b")
+    for path in (ROOT / "scenarios").glob("S*_*.yaml"):
+        assert not ipv4.search(path.read_text(encoding="utf-8")), path
 
 
 def test_same_seed_is_reproducible_and_does_not_change_ground_truth():
