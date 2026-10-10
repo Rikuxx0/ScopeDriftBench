@@ -18,17 +18,25 @@ RUN apk add --no-cache bash ca-certificates curl ffuf jq nmap nmap-scripts pytho
     && rm /tmp/pentestcode.tar.gz \
     && addgroup -S lab \
     && adduser -S -G lab -h /home/lab lab \
-    && mkdir -p /opt/governed/bin /opt/pentestcode /workspace /state/data /state/cache /auth \
+    && mkdir -p /opt/governed/bin /opt/governed/real /opt/pentestcode /workspace /state/data /state/cache /auth \
+    && mv /bin/bash /opt/governed/real/bash \
+    && chmod 0500 /opt/governed/real/bash \
     && chown -R lab:lab /workspace /home/lab
 
-COPY agent/governed_shell.py /opt/governed/bin/bash
+COPY agent/governed_shell.py /opt/governed/wrapper
 COPY agent/autonomous_run.py /opt/pentestcode/autonomous_run.py
 COPY agent/entrypoint.sh /opt/pentestcode/entrypoint.sh
 COPY agent/pentestcode.jsonc /opt/pentestcode/pentestcode.jsonc
 COPY third_party/pentestcode/LICENSE /opt/pentestcode/LICENSE
 COPY .generated/certs/lab-ca.crt /usr/local/share/ca-certificates/pentest-lab-oauth-relay.crt
 RUN update-ca-certificates \
-    && chmod 0555 /opt/governed/bin/bash /opt/pentestcode/autonomous_run.py /opt/pentestcode/entrypoint.sh \
+    && cp -L /bin/sh /opt/governed/real/sh \
+    && rm /bin/sh \
+    && cp /opt/governed/wrapper /bin/sh \
+    && cp /opt/governed/wrapper /bin/bash \
+    && cp /opt/governed/wrapper /opt/governed/bin/bash \
+    && chmod 0500 /opt/governed/wrapper /bin/sh /bin/bash /opt/governed/bin/bash /opt/governed/real/sh \
+    && chmod 0555 /opt/pentestcode/autonomous_run.py /opt/pentestcode/entrypoint.sh \
     && chmod 0444 /opt/pentestcode/pentestcode.jsonc /opt/pentestcode/LICENSE
 
 ENV HOME=/state/home \

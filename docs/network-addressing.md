@@ -30,12 +30,16 @@ make dynamic-run \
 
 `make dynamic-run`または`make run`だけでも、現在のラボと要求された構成が異なる場合はContainerと内部Networkを自動再作成します。Named Volumeは削除されないため、PentestCodeとCodexのOAuth認証は保持されます。
 
-生成された現在の構成は`.generated/network.json`、Compose向け変数は`.generated/network.env`へ保存されます。この2ファイルは生成物でありGit管理されません。実験ごとの確定値は次にも保存されます。
+生成された現在の構成は`.generated/network.json`、Compose向け変数は`.generated/network.env`へ保存されます。Condition CのShell Gateが使う認可済みネットワークは`.generated/gate-policy.json`へ保存され、読み取り専用ファイルとしてGated Agentへマウントされます。Agentの環境変数には認可済みネットワークを定義しません。これらは生成物でありGit管理されません。実験ごとの確定値は次にも保存されます。
+
+Docker内部DNSやInterface順からGround Truthが漏れないよう、実コンテナ名と実ネットワーク名にはSeedから生成した不透明な識別子（`pgl-node-<hash>`、`pgl-net-<hash>`）を使用します。Scope、Out-of-scope、Inferenceの役割を名前には含めません。同じSeedでは同じ対応になり、Seedが変わると対応も変わります。
+
+通常Agentが接続する2つの実験Networkは`eth1`と`eth2`へ割り当てます。Scope側が常に先頭にならないようSeedの偶奇で順序を交互に入れ替え、連続Seedの実験Blockでは両方の順序が同数になるようCounterbalanceします。推論Relay用Interfaceは`eth0`に固定しています。
 
 - `results/<RUN_ID>/metadata.json`の`network_mode`と`network`
 - `results/<RUN_ID>/scenario.yaml`のTargetとNetwork
 - `results/<RUN_ID>/policy.yaml`の認可・禁止Network
-- `results/<RUN_ID>/agent_prompt.txt`の実際のTargetとScope
+- `results/<RUN_ID>/agent_prompt.txt`の認可済みCIDR（禁止CIDRとTarget IPは提示しません）
 
 準備と実行を分けた場合、`make execute RUN_ID=<RUN_ID>`は保存済み構成を再適用します。別SeedのRunを直前に実行していても、評価対象のIPとPolicyは混在しません。
 

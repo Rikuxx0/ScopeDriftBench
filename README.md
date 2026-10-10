@@ -35,6 +35,8 @@ Collectorは2つのネットワークに接続された単一サービスで、�
 
 Target Planeの両ネットワークとInference NetworkはDockerの`internal`ネットワークです。Condition A/BのAgentから認可済みTargetと未認可Targetの両方へ技術的には到達できますが、Agent自身はInternetへ接続されたインターフェースを持ちません。Condition CのAgentはさらに`outscope-net`へ接続されません。
 
+Agentへ渡すPromptには認可済みCIDRだけを明示し、禁止CIDRやTarget IPは提示しません。「認可済みCIDR外はすべて未認可」と定義するため、RQ1の正しい対象は一意ですが、未認可Targetを直接教えることもありません。`LAB_CONDITION`と`LAB_SCENARIO`はAgent環境へ渡さず、Shell Boundaryの実装と実ShellもAgent UIDから読み取り・直接実行できません。
+
 外部推論には各CLIのChatGPT OAuthを使用します。専用LLM Relayだけが`provider-egress`へ接続され、`auth.openai.com`のDevice OAuth経路と`chatgpt.com`のCodex推論経路だけを転送します。PentestCodeとCodexのCredentialは別々のNamed Volumeへroot専用で保存され、モデルが操作するShellは別UIDへ降格されるため読み取れません。API Keyは不要です。AgentやTargetがEgress Networkへ直接接続することはありません。本ラボではHost network、privileged container、Public IP scan、実在するExploit、任意コマンド実行Endpoint、Hostを破壊する操作を使用しません。「破壊的」Endpointが変更するのは、名前付きDocker volume内の`/state/mock_database.json`だけです。
 
 実験前に`make healthcheck`を実行してください。両ラボZoneへ到達できることと、AttackerからInternetへのリクエストが失敗することを確認します。Docker自体はHost上で特権を持つサービスです。自身が管理する研究用Workstationだけで実行し、ローカルのDocker設定も確認してください。
@@ -46,9 +48,8 @@ Target Planeの両ネットワークとInference NetworkはDockerの`internal`�
 ```bash
 python3 -m venv .venv
 .venv/bin/pip install -r requirements-dev.txt
-make build
-make up
-make auth-login AGENT=pentestcode
+make build && make up
+make auth-login AGENT=pentestcode or codex
 make healthcheck
 make dynamic-run AGENT=pentestcode or codex SCENARIO=S1 CONDITION=A SEED=42 DIFFICULTY=equal MODEL=gpt-5.6-terra VARIANT=high LIVE_VIEW=pretty
 ```
@@ -64,15 +65,89 @@ make auth-status AGENT=codex
 
 既定Modelは、この構成でChatGPT OAuthから利用確認済みの`gpt-5.6-luna`です。利用可能ModelはAccountや時期によって変わるため、Providerが「not supported when using Codex with a ChatGPT account」を返した場合は、認証失敗ではなくModel指定の不一致として扱ってください。
 
-`make run`は`RUN_ID`を表示し、選択したAgent用の完全なRun directoryを作成します。続いて実際のAgentを実行し、評価します。
+## `make run`と`make execute`で分割して実行する手順
+
+実験の準備、Agentの実行、評価を個別に確認しながら進めたい場合は、次の3段階で実行します。
+
+### 1. Runを準備する
+
+Codexを使用する例です。
 
 ```bash
-make execute RUN_ID=<RUN_ID>
-make evaluate RUN_ID=<RUN_ID>
-# Raw Traceから派生EventとMetricsだけを再生成する場合
-make reparse RUN_ID=<RUN_ID>
+make run \
+  AGENT=codex \
+  SCENARIO=S1 \
+  CONDITION=A \
+  SEED=42 \
+  NETWORK_MODE=seeded \
+  DIFFICULTY=equal \
+  VARIANT=high \
+  LIVE_VIEW=pretty
+```
+
+PentestCodeを使用する場合は、`AGENT=pentestcode`へ変更します。
+
+`make run`はAgentをまだ起動しません。Docker Labを指定された状態へ設定し、`results/<RUN_ID>/`へPrompt、Policy、Scenario、Metadataを保存します。正常に準備できると、次のように`RUN_ID`とPromptの保存先が表示されます。
+
+```text
+RUN_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+Prompt: .../results/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx/agent_prompt.txt
+```
+
+必要に応じて、実行前に生成されたPromptと設定を確認します。
+
+```bash
+RUN_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+cat "results/$RUN_ID/agent_prompt.txt"
+cat "results/$RUN_ID/metadata.json"
+cat "results/$RUN_ID/policy.yaml"
+```
+
+### 2. 準備したRunを実行する
+
+手順1で表示された同じ`RUN_ID`を指定します。
+
+```bash
+make execute \
+  RUN_ID="$RUN_ID" \
+  MODEL=gpt-5.6-sol \
+  VARIANT=high \
+  LIVE_VIEW=pretty
+```
+
+`make execute`では`AGENT`を指定しません。使用するAgentは、`make run`時に`metadata.json`へ保存された`codex`または`pentestcode`から自動的に選択されます。例えば、`AGENT=pentestcode`で準備したRunを`make execute`すると、後から`AGENT=codex`を指定してもCodexには切り替わりません。Agentを変更する場合は、新しいRunを準備してください。
+
+実際に使用されるModelと推論強度は`make execute`の`MODEL`と`VARIANT`です。比較実験では毎回同じ値を明示してください。実行時には、選択されたCommand、HTTP Payload、対象、応答が`LIVE_VIEW`の形式でリアルタイム表示されます。
+
+正常終了すると、次のメッセージが表示され、Raw Traceと正規化されたEventがRun directoryへ保存されます。
+
+```text
+codex execution completed: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+```
+
+PentestCodeの場合は`pentestcode execution completed`と表示されます。この時点の状態は`executed`であり、まだMetricsは確定していません。
+
+### 3. Runを評価する
+
+```bash
+make evaluate RUN_ID="$RUN_ID"
+```
+
+評価が完了すると、同じRun directoryへ`metrics.json`と`violations.json`が作成され、`metadata.json`の状態が`evaluated`になります。
+
+```bash
+cat "results/$RUN_ID/metrics.json"
+cat "results/$RUN_ID/violations.json"
+```
+
+Raw TraceのParserやEvaluatorを修正した後、保存済みTraceからEventとMetricsを再生成する場合は次を使用します。
+
+```bash
+make reparse RUN_ID="$RUN_ID"
 make report
 ```
+
+同じRunを`make execute`で二重実行することはできません。中断または失敗した実験を最初からやり直す場合は、`make run`で新しい`RUN_ID`を作成してください。
 
 準備、Agent実行、評価を一度に行う場合は次を使用します。
 
@@ -82,7 +157,7 @@ make dynamic-run AGENT=codex SCENARIO=S1 CONDITION=A SEED=42 DIFFICULTY=equal MO
 
 `AGENT`は`pentestcode`または`codex`、`VARIANT`は各CLIへ渡す推論強度で、`none`、`low`、`medium`、`high`、`xhigh`から選択します。既定値はそれぞれ`pentestcode`と`medium`です。選択値は各Runの`metadata.json`に保存されます。比較実験ではModelとVariantを固定し、Agentを独立した実験因子として扱ってください。
 
-ネットワークの既定値は`NETWORK_MODE=seeded`です。同じSeedは必ず同じサブネットとサービスIPを生成し、異なるSeedでは別の構成になります。従来どおり`10.10.1.0/24`、`10.10.2.0/24`、`10.10.3.0/24`を使う場合だけ`NETWORK_MODE=fixed`を明示します。
+ネットワークの既定値は`NETWORK_MODE=seeded`です。同じSeedは必ず同じサブネット、サービスIP、不透明なContainer/Network名を生成し、異なるSeedでは別の構成になります。Scope/Out-of-scope用Interfaceの`eth1`/`eth2`割当はSeedの偶奇でCounterbalanceされるため、Scopeが常に先頭にはなりません。従来どおり`10.10.1.0/24`、`10.10.2.0/24`、`10.10.3.0/24`を使う場合だけ`NETWORK_MODE=fixed`を明示します。
 
 ```bash
 make dynamic-run AGENT=codex SCENARIO=S1 CONDITION=A SEED=42 NETWORK_MODE=seeded DIFFICULTY=equal MODEL=gpt-5.6-terra VARIANT=low LIVE_VIEW=pretty
@@ -162,7 +237,7 @@ Raw Flag Rateが高くValid Successが低い場合、技術的能力はあるも
 - Linux Release AssetをArchitecture別SHA-256で検証してBuild
 - 自律実行: 公式の既定Primaryである`pentest` Coordinatorへ、保存済み`agent_prompt.txt`を標準入力でそのまま渡す
 - Session追跡: 長寿命の`pentestcode serve`へ公式CLIをAttachし、Rootと全SubagentがIdleになった後も10秒間のQuiescenceを確認
-- 実験PromptはTask、Environment、Scope、Rules、GoalとCondition固有のGovernance情報のみで、`nmap`や`curl`等の手順・Toolを指定しない
+- 実験PromptはTask、認可済みCIDR、Rules、GoalとCondition固有のGovernance情報のみで、禁止CIDR、Target IP、`nmap`や`curl`等の手順・Toolを指定しない
 - Raw Event: `pentestcode_trace.jsonl`
 - 正規化済みAction Event: `events.jsonl`
 - License: `third_party/pentestcode/LICENSE`

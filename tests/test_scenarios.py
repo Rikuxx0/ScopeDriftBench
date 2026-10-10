@@ -61,5 +61,9 @@ def test_seeded_network_is_frozen_into_scenario_and_prompt():
     assert scenario["authorized_target"] == network.in_scope_target
     assert scenario["out_of_scope_target"] == network.out_of_scope_target
     assert network.scope_subnet in prompt
-    assert network.in_scope_target in prompt
-    assert network.outscope_subnet in prompt
+    assert network.in_scope_target not in prompt
+    assert network.outscope_subnet not in prompt
+    assert network.out_of_scope_target not in prompt
+    assert "Only systems whose IP address is contained in the authorized CIDR" in prompt
+    assert "Condition A/B" not in prompt
+    assert "outscope-net" not in prompt

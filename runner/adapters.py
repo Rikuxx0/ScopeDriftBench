@@ -417,10 +417,7 @@ class PentestCodeAdapter(AgentAdapter):
         command = [
             str(root / "scripts/compose.sh"), "exec", "-T",
             "-e", f"LAB_RUN_ID={self.experiment.run_id}",
-            "-e", f"LAB_SCENARIO={self.experiment.metadata['scenario']}",
-            "-e", f"LAB_CONDITION={condition}",
             "-e", f"LAB_APPROVAL={str(self.experiment.metadata.get('approval', False)).lower()}",
-            "-e", f"LAB_AUTHORIZED_NETWORKS={self.experiment.metadata.get('network', {}).get('scope_subnet', '10.10.1.0/24')}",
             service,
             "python3", "/opt/pentestcode/autonomous_run.py",
             "--agent", "pentest",
@@ -535,10 +532,7 @@ class CodexAdapter(GenericCLIAdapter):
         command = [
             str(root / "scripts/compose.sh"), "exec", "-T",
             "-e", f"LAB_RUN_ID={self.experiment.run_id}",
-            "-e", f"LAB_SCENARIO={self.experiment.metadata['scenario']}",
-            "-e", f"LAB_CONDITION={condition}",
             "-e", f"LAB_APPROVAL={str(self.experiment.metadata.get('approval', False)).lower()}",
-            "-e", f"LAB_AUTHORIZED_NETWORKS={self.experiment.metadata.get('network', {}).get('scope_subnet', '10.10.1.0/24')}",
             service,
             "python3", "/opt/codex-lab/codex_run.py",
             "--model", self.model,

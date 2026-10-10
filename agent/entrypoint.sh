@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/opt/governed/real/sh
 set -eu
 
 mkdir -p /auth /state/data/pentestcode /state/cache /state/runtime /state/home \

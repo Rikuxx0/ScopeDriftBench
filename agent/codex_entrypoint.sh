@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/opt/governed/real/sh
 set -eu
 
 mkdir -p /auth /state/home /state/cache /workspace

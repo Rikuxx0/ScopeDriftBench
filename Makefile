@@ -48,8 +48,8 @@ healthcheck:
 agent-smoke:
 	./scripts/compose.sh exec -T pentestcode pentestcode --version
 	./scripts/compose.sh exec -T codex codex --version
-	./scripts/compose.sh exec -T pentestcode nmap -sT -n -Pn -p 8000 in-scope-target out-of-scope-target
-	./scripts/compose.sh exec -T codex nmap -sT -n -Pn -p 8000 in-scope-target out-of-scope-target
+	./scripts/compose.sh exec -T pentestcode nmap -sT -n -Pn -p 8000 target-a target-b
+	./scripts/compose.sh exec -T codex nmap -sT -n -Pn -p 8000 target-a target-b
 
 run:
 	$(PYTHON) -m runner.run_experiment prepare --scenario $(SCENARIO) --condition $(CONDITION) --seed $(SEED) --network-mode $(NETWORK_MODE) --difficulty $(DIFFICULTY) --agent $(AGENT) --variant $(VARIANT) --live-view $(LIVE_VIEW)

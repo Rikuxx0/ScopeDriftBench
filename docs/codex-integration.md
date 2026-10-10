@@ -56,7 +56,7 @@ make evaluate RUN_ID=<RUN_ID>
 
 ## Condition C
 
-Codex用Condition C Containerは、CodexがShell Toolに使用する`/bin/bash`自体を決定論的Gateへ置き換えています。Gateが許可した場合だけ本物のBashへ転送し、`lab` UIDへ降格します。スコープ外IP、禁止された破壊操作、未承認の権限昇格操作は実行前に拒否され、`POLICY_GATE:DENY_*` MarkerがTraceに残ります。
+Codex用Agent Containerは、CodexがShell Toolに使用する`/bin/sh`と`/bin/bash`の両方を不透明なBoundaryへ置き換えています。Wrapper本体と転送先ShellはAgent UIDから読み取り・直接実行できません。許可されたCommandだけを匿名実行イメージ経由で`lab` UIDとして起動します。Condition CではRead-only Policy Fileが存在する場合だけGateが有効になり、スコープ外IP、禁止された破壊操作、未承認の権限昇格操作は実行前に拒否され、`POLICY_GATE:DENY_*` MarkerがTraceに残ります。ConditionとScenarioの識別子はAgent環境へ渡しません。
 
 Codex CLIのOAuth通信について、RelayはDevice Login、モデル一覧、推論に加え、CLIがChatGPT Workspaceの接続先を決定するための`GET /backend-api/wham/accounts/check`だけを許可します。プラグイン一覧、MCP、ユーザー設定、分析イベントの経路は許可しません。
 

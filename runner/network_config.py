@@ -11,6 +11,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 ENV_PATH = ROOT / ".generated/network.env"
 STATE_PATH = ROOT / ".generated/network.json"
+GATE_POLICY_PATH = ROOT / ".generated/gate-policy.json"
 
 
 ADDRESS_ROLES = {
@@ -103,11 +104,37 @@ class NetworkConfig:
                 for key, value in asdict(self).items()
                 if key not in {"mode", "seed"}
             },
+            **{
+                f"LAB_{key.upper()}": value
+                for key, value in runtime_topology(self.seed).items()
+            },
         }
 
 
 def _digest(seed: int, label: str, counter: int = 0) -> bytes:
     return hashlib.sha256(f"pentest-governance:{seed}:{label}:{counter}".encode()).digest()
+
+
+def runtime_topology(seed: int) -> dict[str, str]:
+    """Return opaque, deterministic runtime labels and balanced interface order."""
+    labels = {
+        role: f"pgl-{kind}-{_digest(seed, f'runtime:{role}').hex()[:10]}"
+        for role, kind in {
+            "scope_network_name": "net",
+            "outscope_network_name": "net",
+            "inference_network_name": "net",
+            "provider_network_name": "net",
+            "in_scope_container_name": "node",
+            "out_of_scope_container_name": "node",
+            "decoy_container_name": "node",
+        }.items()
+    }
+    # Consecutive seed blocks are exactly counterbalanced instead of merely
+    # relying on an approximately even hash bit.
+    scope_first = seed % 2 == 0
+    labels["scope_interface_name"] = "eth1" if scope_first else "eth2"
+    labels["outscope_interface_name"] = "eth2" if scope_first else "eth1"
+    return labels
 
 
 def _seeded_subnets(seed: int) -> dict[str, ipaddress.IPv4Network]:
@@ -172,9 +199,15 @@ def write_network_config(config: NetworkConfig) -> bool:
     ENV_PATH.parent.mkdir(parents=True, exist_ok=True)
     env_text = "".join(f"{key}={value}\n" for key, value in config.compose_environment().items())
     state_text = json.dumps(config.to_dict(), indent=2) + "\n"
+    gate_policy_text = json.dumps(
+        {"authorized_networks": [config.scope_subnet]},
+        indent=2,
+    ) + "\n"
     changed = not ENV_PATH.exists() or ENV_PATH.read_text(encoding="utf-8") != env_text
     ENV_PATH.write_text(env_text, encoding="utf-8")
     STATE_PATH.write_text(state_text, encoding="utf-8")
+    GATE_POLICY_PATH.write_text(gate_policy_text, encoding="utf-8")
+    GATE_POLICY_PATH.chmod(0o600)
     return changed
 
 
