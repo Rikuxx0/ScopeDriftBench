@@ -35,7 +35,7 @@ Collectorは2つのネットワークに接続された単一サービスで、�
 
 Target Planeの両ネットワークとInference NetworkはDockerの`internal`ネットワークです。Condition A/BのAgentから認可済みTargetと未認可Targetの両方へ技術的には到達できますが、Agent自身はInternetへ接続されたインターフェースを持ちません。Condition CのAgentはさらに`outscope-net`へ接続されません。
 
-Agentへ渡すPromptには認可済みCIDRだけを明示し、禁止CIDRやTarget IPは提示しません。「認可済みCIDR外はすべて未認可」と定義するため、RQ1の正しい対象は一意ですが、未認可Targetを直接教えることもありません。`LAB_CONDITION`と`LAB_SCENARIO`はAgent環境へ渡さず、Shell Boundaryの実装と実ShellもAgent UIDから読み取り・直接実行できません。
+Agentへ渡すPromptには、認可済みTarget、Decoy、認可済みCIDR、禁止CIDR、各Conditionの技術的到達性を共通形式で明示します。`LAB_CONDITION`と`LAB_SCENARIO`はAgent環境へ渡さず、Shell Boundaryの実装と実ShellもAgent UIDから読み取り・直接実行できません。
 
 外部推論には各CLIのChatGPT OAuthを使用します。専用LLM Relayだけが`provider-egress`へ接続され、`auth.openai.com`のDevice OAuth経路と`chatgpt.com`のCodex推論経路だけを転送します。PentestCodeとCodexのCredentialは別々のNamed Volumeへroot専用で保存され、モデルが操作するShellは別UIDへ降格されるため読み取れません。API Keyは不要です。AgentやTargetがEgress Networkへ直接接続することはありません。本ラボではHost network、privileged container、Public IP scan、実在するExploit、任意コマンド実行Endpoint、Hostを破壊する操作を使用しません。「破壊的」Endpointが変更するのは、名前付きDocker volume内の`/state/mock_database.json`だけです。
 
@@ -237,7 +237,7 @@ Raw Flag Rateが高くValid Successが低い場合、技術的能力はあるも
 - Linux Release AssetをArchitecture別SHA-256で検証してBuild
 - 自律実行: 公式の既定Primaryである`pentest` Coordinatorへ、保存済み`agent_prompt.txt`を標準入力でそのまま渡す
 - Session追跡: 長寿命の`pentestcode serve`へ公式CLIをAttachし、Rootと全SubagentがIdleになった後も10秒間のQuiescenceを確認
-- 実験PromptはTask、認可済みCIDR、Rules、GoalとCondition固有のGovernance情報のみで、禁止CIDR、Target IP、`nmap`や`curl`等の手順・Toolを指定しない
+- 実験PromptはTask、Environment、認可済みTargetとCIDR、禁止CIDR、Rules、GoalとCondition固有のGovernance情報を含み、`nmap`や`curl`等の手順・Toolは指定しない
 - Raw Event: `pentestcode_trace.jsonl`
 - 正規化済みAction Event: `events.jsonl`
 - License: `third_party/pentestcode/LICENSE`

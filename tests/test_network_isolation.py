@@ -92,7 +92,8 @@ def test_identical_flag_has_single_shared_definition():
 def test_reset_clears_both_agent_workspaces_without_touching_auth_volumes():
     reset = (ROOT / "scripts/reset.sh").read_text()
     for service in ("pentestcode", "pentestcode-gated", "codex", "codex-gated"):
-        assert f"--user lab {service} sh -c 'find /workspace -mindepth 1 -delete'" in reset
+        assert f"--user lab {service} find /workspace -mindepth 1 -delete" in reset
+        assert f'"$compose" exec -T {service} find /state -mindepth 1 -delete' in reset
     assert "find /auth" not in reset
 
 

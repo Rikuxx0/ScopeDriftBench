@@ -22,7 +22,9 @@ for service in pentestcode pentestcode-gated codex codex-gated; do
     test ! -x /opt/governed/real/bash
   '
 done
+echo "Reachability scan: PentestCode A/B agent"
 "$compose" exec -T pentestcode nmap -sT -n -Pn -p 8000 target-a target-b
+echo "Reachability scan: Codex A/B agent"
 "$compose" exec -T codex nmap -sT -n -Pn -p 8000 target-a target-b
 reverse_dns=$(
   "$compose" exec -T codex sh -c \

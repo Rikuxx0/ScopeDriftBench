@@ -22,25 +22,26 @@ if [ "$approval" = true ]; then approval_python=True; else approval_python=False
 
 "$compose" exec -T attacker python -c "import json,urllib.request; payload=json.dumps({'seed':int('$seed'),'difficulty_profile':'$difficulty','approval':$approval_python}).encode(); urls=['http://target-a:8000/reset','http://target-c:8000/reset','http://target-b:8000/reset']; [(lambda r: urllib.request.urlopen(r,timeout=5).read())(urllib.request.Request(u,data=payload,headers={'Content-Type':'application/json'},method='POST')) for u in urls]"
 # Stop a prior interrupted autonomous run before clearing its session database.
-"$compose" exec -T pentestcode sh -c "pkill -f '/opt/pentestcode/[a]utonomous_run.py' || true; pkill -f '[p]entestcode serve' || true"
-"$compose" exec -T pentestcode-gated sh -c "pkill -f '/opt/pentestcode/[a]utonomous_run.py' || true; pkill -f '[p]entestcode serve' || true"
-"$compose" exec -T codex sh -c "pkill -f '/opt/codex-lab/[c]odex_run.py' || true; pkill -f '[c]odex exec' || true"
-"$compose" exec -T codex-gated sh -c "pkill -f '/opt/codex-lab/[c]odex_run.py' || true; pkill -f '[c]odex exec' || true"
+"$compose" exec -T pentestcode /opt/governed/real/sh -c "pkill -f '/opt/pentestcode/[a]utonomous_run.py' || true; pkill -f '[p]entestcode serve' || true"
+"$compose" exec -T pentestcode-gated /opt/governed/real/sh -c "pkill -f '/opt/pentestcode/[a]utonomous_run.py' || true; pkill -f '[p]entestcode serve' || true"
+"$compose" exec -T codex /opt/governed/real/sh -c "pkill -f '/opt/codex-lab/[c]odex_run.py' || true; pkill -f '[c]odex exec' || true"
+"$compose" exec -T codex-gated /opt/governed/real/sh -c "pkill -f '/opt/codex-lab/[c]odex_run.py' || true; pkill -f '[c]odex exec' || true"
 # /state is owned by the root orchestrator. Shell tools deliberately run as the
-# unprivileged `lab` user and therefore own /workspace artifacts. The agent
-# container drops DAC_OVERRIDE, so each tree must be cleaned by its owner.
-"$compose" exec -T pentestcode sh -c 'find /state -mindepth 1 -delete'
-"$compose" exec -T --user lab pentestcode sh -c 'find /workspace -mindepth 1 -delete'
-"$compose" exec -T --user lab pentestcode sh -c 'find /tmp/pentestcode -mindepth 1 -delete'
-"$compose" exec -T pentestcode-gated sh -c 'find /state -mindepth 1 -delete'
-"$compose" exec -T --user lab pentestcode-gated sh -c 'find /workspace -mindepth 1 -delete'
-"$compose" exec -T --user lab pentestcode-gated sh -c 'find /tmp/pentestcode -mindepth 1 -delete'
-"$compose" exec -T codex sh -c 'find /state -mindepth 1 -delete'
-"$compose" exec -T --user lab codex sh -c 'find /workspace -mindepth 1 -delete'
-"$compose" exec -T --user lab codex sh -c 'find /tmp/codex -mindepth 1 -delete'
-"$compose" exec -T codex-gated sh -c 'find /state -mindepth 1 -delete'
-"$compose" exec -T --user lab codex-gated sh -c 'find /workspace -mindepth 1 -delete'
-"$compose" exec -T --user lab codex-gated sh -c 'find /tmp/codex -mindepth 1 -delete'
+# unprivileged `lab` user and therefore own /workspace and tool scratch files.
+# Avoid the Agent shell boundary for both maintenance paths: root uses direct
+# find, while workspace cleanup runs direct find with the lab identity.
+"$compose" exec -T pentestcode find /state -mindepth 1 -delete
+"$compose" exec -T --user lab pentestcode find /workspace -mindepth 1 -delete
+"$compose" exec -T --user lab pentestcode find /tmp/pentestcode -mindepth 1 -delete
+"$compose" exec -T pentestcode-gated find /state -mindepth 1 -delete
+"$compose" exec -T --user lab pentestcode-gated find /workspace -mindepth 1 -delete
+"$compose" exec -T --user lab pentestcode-gated find /tmp/pentestcode -mindepth 1 -delete
+"$compose" exec -T codex find /state -mindepth 1 -delete
+"$compose" exec -T --user lab codex find /workspace -mindepth 1 -delete
+"$compose" exec -T --user lab codex find /tmp/codex -mindepth 1 -delete
+"$compose" exec -T codex-gated find /state -mindepth 1 -delete
+"$compose" exec -T --user lab codex-gated find /workspace -mindepth 1 -delete
+"$compose" exec -T --user lab codex-gated find /tmp/codex -mindepth 1 -delete
 "$compose" exec -T pentestcode /opt/pentestcode/entrypoint.sh --init-only
 "$compose" exec -T pentestcode-gated /opt/pentestcode/entrypoint.sh --init-only
 "$compose" exec -T codex /opt/codex-lab/entrypoint.sh --init-only
