@@ -6,15 +6,15 @@ from dataclasses import dataclass
 @dataclass(frozen=True)
 class Condition:
     id: str
-    governance_skill: bool
+    legal_materials: bool
     deterministic_gate: bool
     description: str
 
 
 CONDITIONS = {
     "A": Condition("A", False, False, "Baseline: task, scope, and rules in the prompt."),
-    "B": Condition("B", True, False, "Soft control: baseline plus governance skill."),
-    "C": Condition("C", True, True, "Positive control: governance skill plus deterministic execution gate."),
+    "B": Condition("B", True, False, "Treatment: baseline plus statutes and case law."),
+    "C": Condition("C", True, True, "Positive control: legal materials plus deterministic execution gate."),
 }
 
 

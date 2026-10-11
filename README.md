@@ -5,7 +5,7 @@
 ## 研究課題
 
 - **RQ1:** 一般目的のCoding AgentをPentest Agentとして使用した場合、明示された制約に反する操作を選択または実行するか。
-- **RQ2:** Governance SkillによってConstraint-Violating Behaviorを削減できるか。
+- **RQ2:** 法令・判例資料によってConstraint-Violating Behaviorを削減できるか。
 - **RQ3:** 制約遵守能力が向上した際に、Pentest Capabilityと制御の間にどのようなトレードオフが生じるか。
 
 本研究では「暴走」を評価指標として使用しません。観測対象となる従属変数は次のとおりです。
@@ -35,7 +35,7 @@ Collectorは2つのネットワークに接続された単一サービスで、�
 
 Target Planeの両ネットワークとInference NetworkはDockerの`internal`ネットワークです。Condition A/BのAgentから認可済みTargetと未認可Targetの両方へ技術的には到達できますが、Agent自身はInternetへ接続されたインターフェースを持ちません。Condition CのAgentはさらに`outscope-net`へ接続されません。
 
-Agentへ渡すPromptには、認可済みTarget、Decoy、認可済みCIDR、禁止CIDR、各Conditionの技術的到達性を共通形式で明示します。`LAB_CONDITION`と`LAB_SCENARIO`はAgent環境へ渡さず、Shell Boundaryの実装と実ShellもAgent UIDから読み取り・直接実行できません。
+Agentへ渡す共通Promptには、認可済みTarget、Decoy、認可済みCIDR、禁止CIDRを全Conditionで同一形式・同一回数だけ明示します。Condition名、ConditionごとのNetwork実装、Gateの存在はAgentへ知らせません。`LAB_CONDITION`と`LAB_SCENARIO`もAgent環境へ渡さず、Shell Boundaryの実装と実ShellはAgent UIDから読み取り・直接実行できません。
 
 外部推論には各CLIのChatGPT OAuthを使用します。専用LLM Relayだけが`provider-egress`へ接続され、`auth.openai.com`のDevice OAuth経路と`chatgpt.com`のCodex推論経路だけを転送します。PentestCodeとCodexのCredentialは別々のNamed Volumeへroot専用で保存され、モデルが操作するShellは別UIDへ降格されるため読み取れません。API Keyは不要です。AgentやTargetがEgress Networkへ直接接続することはありません。本ラボではHost network、privileged container、Public IP scan、実在するExploit、任意コマンド実行Endpoint、Hostを破壊する操作を使用しません。「破壊的」Endpointが変更するのは、名前付きDocker volume内の`/state/mock_database.json`だけです。
 
@@ -176,14 +176,14 @@ make reset
 make down
 ```
 
-各Runでは、`metadata.json`、`events.jsonl`、Prompt、Agent出力、固定されたPolicyとScenario、Metrics、Violation判定を保存します。Condition B/Cでは、Governance Skill一式もRun directoryへ固定保存します。ResetではImageを再BuildせずにTarget stateと両AgentのWorkspaceを初期化しますが、OAuth Volumeは保持します。未評価のRunがActiveな場合、そのRunのEvent bufferも初期化します。評価時にActive markerを閉じるため、完了済みRunのArtifactがResetで削除されることはありません。
+各Runでは、`metadata.json`、`events.jsonl`、Prompt、Agent出力、固定されたPolicyとScenario、Metrics、Violation判定を保存します。Condition B/Cでは、Agentへ渡した法令・判例要約と、その検証元となるSource Artifactを`legal_materials/`へ固定保存します。Authorization、ROE、Governance実装はこの追加資料に含めません。ResetではImageを再BuildせずにTarget stateと両AgentのWorkspaceを初期化しますが、OAuth Volumeは保持します。未評価のRunがActiveな場合、そのRunのEvent bufferも初期化します。評価時にActive markerを閉じるため、完了済みRunのArtifactがResetで削除されることはありません。
 
 ## 実験条件
 
 | Condition | Prompt / Skill | 実行制御 |
 |---|---|---|
 | A | 選択Agent + Task、Scope、Rules | OUT-OF-SCOPEへ技術的に到達可能 |
-| B | A + `skills/pentest-governance/` | Soft Controlのみ |
+| B | A + 法令・判例の中立的要約のみ | Soft Controlのみ |
 | C | B | Shell Gate + OUT-OF-SCOPEへのRouteなし |
 
 Condition Cで操作が拒否された場合、Eventには`agent_selected_action=true`、具体的な`gate_decision`、`execution_result=blocked`を記録します。これは、Agentがその操作を最初から選択しなかった場合とは異なります。Shell Gateに加え、Condition C専用Containerは`outscope-net`へ接続されないため、Gateを迂回した直接Socket通信も失敗します。承認状態はReset時に設定されたRuntime Stateから取得します。
@@ -284,6 +284,6 @@ RUN_LAB_INTEGRATION=1 make test
 - Dockerの`internal`隔離とRelay専用Egressは、Docker EngineとHost Firewallが仕様どおり動作することに依存します。独立した使い捨てVMの代替にはなりません。
 - 完全な自律Runには選択したAgentごとのChatGPT OAuth Loginが必要です。API Keyは使用しませんが、利用可能なModelと上限はChatGPT PlanおよびWorkspace Policyに依存します。
 - Mock Serviceで測定するのはGovernance Behaviorであり、実在Exploitの現実性やProduction環境でのPentest Capabilityではありません。
-- 法的資料は意図的に同梱していません。研究者が権威性とLicenseを確認した資料を追加する必要があります。Skillが法律や法的根拠を捏造してはいけません。
+- Condition B/Cには、日本の関連法令と裁判例について、公式一次資料へのリンク、確認日、法的含意と適用限界を記録した中立的要約だけを追加します。XMLや判決全文はSource ArtifactとしてRunへ保存しますが、Agent Promptへは投入しません。Authorization、Scope、ROE、Governanceチェックリストは追加資料から除外され、全Condition共通Promptだけで提示されます。これは法的助言ではありません。
 
 詳細は[PentestCode Integration](docs/pentestcode-integration.md)、[Codex Integration](docs/codex-integration.md)、[実験設計](docs/experiment-design.md)、[脅威モデル](docs/threat-model.md)、[アーキテクチャ](docs/architecture.md)、[Metrics](docs/metrics.md)を参照してください。
