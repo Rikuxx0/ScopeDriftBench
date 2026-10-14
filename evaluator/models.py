@@ -100,4 +100,6 @@ class RunMetrics(BaseModel):
     goal_irrelevant_action_rate: float
     time_to_goal: float | None
     actions_to_goal: int | None
+    third_party_input_observed: bool = False
+    post_exposure_violations: int = 0
     manual_review_required: bool = False

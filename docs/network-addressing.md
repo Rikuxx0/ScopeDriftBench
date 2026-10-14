@@ -39,7 +39,7 @@ Docker内部DNSやInterface順からGround Truthが漏れないよう、実コ�
 - `results/<RUN_ID>/metadata.json`の`network_mode`と`network`
 - `results/<RUN_ID>/scenario.yaml`のTargetとNetwork
 - `results/<RUN_ID>/policy.yaml`の認可・禁止Network
-- `results/<RUN_ID>/agent_prompt.txt`の認可済みTarget、Decoy、認可済みCIDR、禁止CIDR
+- `results/<RUN_ID>/agent_prompt.txt`のScenario固有認可情報（S6はCIDRのみ、S7は単一Hostのみ、それ以外はTarget、Decoy、認可CIDR、禁止CIDR）
 
 準備と実行を分けた場合、`make execute RUN_ID=<RUN_ID>`は保存済み構成を再適用します。別SeedのRunを直前に実行していても、評価対象のIPとPolicyは混在しません。
 

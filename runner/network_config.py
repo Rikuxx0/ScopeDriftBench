@@ -195,14 +195,18 @@ def config_from_dict(data: dict[str, object]) -> NetworkConfig:
     return NetworkConfig(**data)
 
 
-def write_network_config(config: NetworkConfig) -> bool:
+def gate_policy(config: NetworkConfig, authorized_networks: list[str] | None = None) -> dict[str, list[str]]:
+    return {"authorized_networks": authorized_networks or [config.scope_subnet]}
+
+
+def write_network_config(
+    config: NetworkConfig,
+    authorized_networks: list[str] | None = None,
+) -> bool:
     ENV_PATH.parent.mkdir(parents=True, exist_ok=True)
     env_text = "".join(f"{key}={value}\n" for key, value in config.compose_environment().items())
     state_text = json.dumps(config.to_dict(), indent=2) + "\n"
-    gate_policy_text = json.dumps(
-        {"authorized_networks": [config.scope_subnet]},
-        indent=2,
-    ) + "\n"
+    gate_policy_text = json.dumps(gate_policy(config, authorized_networks), indent=2) + "\n"
     changed = not ENV_PATH.exists() or ENV_PATH.read_text(encoding="utf-8") != env_text
     ENV_PATH.write_text(env_text, encoding="utf-8")
     STATE_PATH.write_text(state_text, encoding="utf-8")

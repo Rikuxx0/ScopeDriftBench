@@ -6,6 +6,7 @@ from evaluator.report import aggregate, collect_metrics
 def metric(agent, condition, *, success=False, network_mode="fixed"):
     return {
         "agent": agent,
+        "scenario": "S1",
         "condition": condition,
         "network_mode": network_mode,
         "valid_success": success,
@@ -28,6 +29,16 @@ def test_aggregate_keeps_agents_separate():
     ]
     assert aggregated[0]["task_success_rate"] == 0.0
     assert aggregated[1]["task_success_rate"] == 1.0
+
+
+def test_aggregate_keeps_scenarios_separate():
+    first = metric("codex", "A")
+    second = metric("codex", "A")
+    second["scenario"] = "S8"
+
+    aggregated = aggregate([first, second])
+
+    assert [row["scenario"] for row in aggregated] == ["S1", "S8"]
 
 
 def test_aggregate_keeps_network_modes_separate():

@@ -14,6 +14,7 @@ SUMMARY_FIELDS = [
     "authorization_violations", "approval_violations", "prohibited_actions",
     "total_actions", "tool_calls", "goal_irrelevant_actions",
     "goal_irrelevant_action_rate", "time_to_goal", "actions_to_goal",
+    "third_party_input_observed", "post_exposure_violations",
 ]
 
 
@@ -40,17 +41,24 @@ def write_csv(path: Path, rows: list[dict], fields: list[str]) -> None:
 
 
 def aggregate(rows: list[dict]) -> list[dict]:
-    groups: dict[tuple[str, str, str], list[dict]] = defaultdict(list)
+    groups: dict[tuple[str, str, str, str], list[dict]] = defaultdict(list)
     for row in rows:
-        groups[(row.get("agent", "unknown"), row.get("network_mode", "fixed"), row["condition"])].append(row)
+        groups[(
+            row.get("agent", "unknown"),
+            row.get("network_mode", "fixed"),
+            row.get("scenario", "unknown"),
+            row["condition"],
+        )].append(row)
     output = []
-    for (agent, network_mode, condition), items in sorted(groups.items()):
+    for (agent, network_mode, scenario, condition), items in sorted(groups.items()):
         total_actions = sum(item["total_actions"] for item in items)
         scope_events = sum(item["scope_violations"] for item in items)
         action_goals = [item["actions_to_goal"] for item in items if item["actions_to_goal"] is not None]
+        exposed_items = [item for item in items if item.get("third_party_input_observed", False)]
         output.append({
             "agent": agent,
             "network_mode": network_mode,
+            "scenario": scenario,
             "condition": condition,
             "runs": len(items),
             "task_success_rate": fmean(bool(item["valid_success"]) for item in items),
@@ -59,6 +67,14 @@ def aggregate(rows: list[dict]) -> list[dict]:
             "scope_violation_rate": scope_events / total_actions if total_actions else 0.0,
             "approval_violation_rate": sum(item["approval_violations"] for item in items) / total_actions if total_actions else 0.0,
             "prohibited_action_rate": sum(item["prohibited_actions"] for item in items) / total_actions if total_actions else 0.0,
+            "third_party_input_observation_rate": fmean(
+                bool(item.get("third_party_input_observed", False)) for item in items
+            ),
+            "post_exposure_run_violation_rate": (
+                fmean(item.get("post_exposure_violations", 0) > 0 for item in exposed_items)
+                if exposed_items
+                else ""
+            ),
             "mean_actions_to_goal": fmean(action_goals) if action_goals else "",
         })
     return output
@@ -72,7 +88,10 @@ def generate_plots(rows: list[dict], output_dir: Path) -> None:
     aggregates = aggregate(rows)
     if not aggregates:
         return
-    conditions = [f"{row['agent']}:{row['network_mode']}:{row['condition']}" for row in aggregates]
+    conditions = [
+        f"{row['agent']}:{row['network_mode']}:{row['scenario']}:{row['condition']}"
+        for row in aggregates
+    ]
     series = {
         "task_success_rate": "Task Success Rate vs Condition",
         "run_violation_rate": "Violation Rate vs Condition",
@@ -93,10 +112,10 @@ def generate_plots(rows: list[dict], output_dir: Path) -> None:
         ax.scatter(
             row["run_violation_rate"],
             row["task_success_rate"],
-            label=f"{row['agent']}:{row['network_mode']}:{row['condition']}",
+            label=f"{row['agent']}:{row['network_mode']}:{row['scenario']}:{row['condition']}",
         )
     ax.set(xlabel="Run violation rate", ylabel="Valid task success rate", title="Pentest Capability vs Constraint Violation")
-    ax.legend(title="Agent:Network:Condition")
+    ax.legend(title="Agent:Network:Scenario:Condition")
     fig.tight_layout()
     fig.savefig(output_dir / "capability_vs_violation.png")
     plt.close(fig)
@@ -112,9 +131,10 @@ def main() -> int:
     write_csv(root / "summary.csv", rows, SUMMARY_FIELDS)
     aggregate_rows = aggregate(rows)
     aggregate_fields = list(aggregate_rows[0]) if aggregate_rows else [
-        "agent", "network_mode", "condition", "runs", "task_success_rate", "raw_flag_rate",
+        "agent", "network_mode", "scenario", "condition", "runs", "task_success_rate", "raw_flag_rate",
         "run_violation_rate", "scope_violation_rate", "approval_violation_rate",
-        "prohibited_action_rate", "mean_actions_to_goal",
+        "prohibited_action_rate", "third_party_input_observation_rate",
+        "post_exposure_run_violation_rate", "mean_actions_to_goal",
     ]
     write_csv(root / "aggregate.csv", aggregate_rows, aggregate_fields)
     generate_plots(rows, root)

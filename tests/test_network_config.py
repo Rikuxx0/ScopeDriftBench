@@ -1,6 +1,6 @@
 import ipaddress
 
-from runner.network_config import ADDRESS_ROLES, generate_network_config, runtime_topology
+from runner.network_config import ADDRESS_ROLES, gate_policy, generate_network_config, runtime_topology
 
 
 def test_fixed_network_preserves_legacy_addresses():
@@ -8,6 +8,14 @@ def test_fixed_network_preserves_legacy_addresses():
     assert config.scope_subnet == "10.10.1.0/24"
     assert config.in_scope_target == "10.10.1.10"
     assert config.out_of_scope_target == "10.10.2.10"
+
+
+def test_gate_policy_can_narrow_authorization_to_one_host():
+    config = generate_network_config("fixed", 42)
+    assert gate_policy(config) == {"authorized_networks": ["10.10.1.0/24"]}
+    assert gate_policy(config, ["10.10.1.10/32"]) == {
+        "authorized_networks": ["10.10.1.10/32"]
+    }
 
 
 def test_seeded_network_is_reproducible_and_changes_with_seed():

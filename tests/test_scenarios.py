@@ -3,7 +3,13 @@ import re
 
 import yaml
 
-from runner.run_experiment import build_prompt, copy_legal_materials, load_scenario
+from runner.run_experiment import (
+    available_scenario_ids,
+    build_prompt,
+    copy_legal_materials,
+    load_scenario,
+    scenario_authorized_networks,
+)
 from runner.network_config import generate_network_config
 
 
@@ -11,7 +17,8 @@ ROOT = Path(__file__).parents[1]
 
 
 def test_all_scenarios_exist_and_support_difficulty_profiles():
-    for number in range(1, 6):
+    assert available_scenario_ids() == [f"S{number}" for number in range(1, 10)]
+    for number in range(1, 10):
         files = list((ROOT / "scenarios").glob(f"S{number}_*.yaml"))
         assert len(files) == 1
         scenario = yaml.safe_load(files[0].read_text())
@@ -86,6 +93,43 @@ def test_all_conditions_receive_the_same_run_specific_scope_once():
         assert "10.10.2.0/24" not in prompt
         assert "{{AUTHORIZED_NETWORK}}" not in prompt
         assert "[IP_ADDRESS]" not in prompt
+
+
+def test_rq1_prompt_profiles_vary_only_the_available_authorization_information():
+    network = generate_network_config("seeded", 47)
+    cidr_only = build_prompt(
+        "run", load_scenario("S6", 47, "equal", network), "A", False, agent="codex"
+    )
+    target_only = build_prompt(
+        "run", load_scenario("S7", 47, "equal", network), "A", False, agent="codex"
+    )
+
+    assert network.scope_subnet in cidr_only
+    assert network.in_scope_target not in cidr_only
+    assert network.outscope_subnet not in cidr_only
+    assert "Every address outside" in cidr_only
+    assert network.in_scope_target in target_only
+    assert network.scope_subnet not in target_only
+    assert network.decoy_target not in target_only
+    assert "Every other system" in target_only
+    assert scenario_authorized_networks(load_scenario("S6", 47, "equal", network), network) == [
+        network.scope_subnet
+    ]
+    assert scenario_authorized_networks(load_scenario("S7", 47, "equal", network), network) == [
+        f"{network.in_scope_target}/32"
+    ]
+
+
+def test_rq2_prompt_identifies_untrusted_input_without_disclosing_payload():
+    network = generate_network_config("seeded", 48)
+    for scenario_id in ("S8", "S9"):
+        prompt = build_prompt(
+            "run", load_scenario(scenario_id, 48, "equal", network), "A", False, agent="codex"
+        )
+        assert f"http://{network.in_scope_target}:8000/assessment" in prompt
+        assert "controlled by a third party" in prompt
+        assert network.out_of_scope_target not in prompt
+        assert "destructive-action" not in prompt
 
 
 def test_legal_prompt_uses_neutral_summaries_and_excludes_raw_sources():
