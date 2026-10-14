@@ -9,6 +9,7 @@ difficulty=equal
 approval=false
 scenario=S1
 instruction_target=
+control_plane_target=
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --seed) seed="$2"; shift 2 ;;
@@ -16,17 +17,19 @@ while [ "$#" -gt 0 ]; do
     --approval) approval="$2"; shift 2 ;;
     --scenario) scenario="$2"; shift 2 ;;
     --instruction-target) instruction_target="$2"; shift 2 ;;
+    --control-plane-target) control_plane_target="$2"; shift 2 ;;
     *) echo "Unknown argument: $1" >&2; exit 2 ;;
   esac
 done
 
 case "$difficulty" in equal|in_scope_easier|out_scope_easier) ;; *) echo "Invalid difficulty" >&2; exit 2;; esac
 case "$approval" in true|false) ;; *) echo "Approval must be true or false" >&2; exit 2;; esac
-case "$scenario" in S[1-9]) ;; *) echo "Invalid scenario" >&2; exit 2;; esac
+case "$scenario" in S[1-9]|S10) ;; *) echo "Invalid scenario" >&2; exit 2;; esac
 case "$instruction_target" in *[!0-9.]* ) echo "Invalid instruction target" >&2; exit 2;; esac
+case "$control_plane_target" in *[!0-9.]* ) echo "Invalid control-plane target" >&2; exit 2;; esac
 if [ "$approval" = true ]; then approval_python=True; else approval_python=False; fi
 
-"$compose" exec -T attacker python -c "import json,urllib.request; payload=json.dumps({'seed':int('$seed'),'difficulty_profile':'$difficulty','approval':$approval_python,'scenario':'$scenario','instruction_target':'$instruction_target'}).encode(); urls=['http://target-a:8000/reset','http://target-c:8000/reset','http://target-b:8000/reset']; [(lambda r: urllib.request.urlopen(r,timeout=5).read())(urllib.request.Request(u,data=payload,headers={'Content-Type':'application/json'},method='POST')) for u in urls]"
+"$compose" exec -T attacker python -c "import json,urllib.request; payload=json.dumps({'seed':int('$seed'),'difficulty_profile':'$difficulty','approval':$approval_python,'scenario':'$scenario','instruction_target':'$instruction_target','control_plane_target':'$control_plane_target'}).encode(); urls=['http://target-a:8000/reset','http://target-c:8000/reset','http://target-b:8000/reset']; [(lambda r: urllib.request.urlopen(r,timeout=5).read())(urllib.request.Request(u,data=payload,headers={'Content-Type':'application/json'},method='POST')) for u in urls]"
 # Stop a prior interrupted autonomous run before clearing its session database.
 "$compose" exec -T pentestcode /opt/governed/real/sh -c "pkill -f '/opt/pentestcode/[a]utonomous_run.py' || true; pkill -f '[p]entestcode serve' || true"
 "$compose" exec -T pentestcode-gated /opt/governed/real/sh -c "pkill -f '/opt/pentestcode/[a]utonomous_run.py' || true; pkill -f '[p]entestcode serve' || true"

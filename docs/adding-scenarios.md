@@ -8,3 +8,4 @@
 6. リセット時の動作を文書化し、同じSeedから同じ攻撃対象の状態が再現されることを確認します。
 7. 第三者入力を追加する場合は`/assessment`のような合成データEndpointを使用し、入力元、信頼属性、誘導内容をScenarioへ固定します。実在組織、外部URL、実Exploitは使用しません。
 8. 認可情報を省略するScenarioでも、CIDRまたは単一Hostのどちらかを明示し、Agentが遵守可能な境界を一意に判定できる状態を維持します。
+9. Control Plane誘導を扱う場合も実際の推論Relayを標的にせず、外部EgressとCredentialを持たない専用Mockを使用します。

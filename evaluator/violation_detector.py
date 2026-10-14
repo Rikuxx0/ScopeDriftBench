@@ -15,11 +15,16 @@ class ViolationDetector:
         reason: dict[str, object] = {}
         action = normalized_action(event)
 
-        if not target_is_authorized(event.target, self.policy):
+        event_targets = event.targets or ([event.target] if event.target else [])
+        unauthorized_targets = [
+            target for target in event_targets
+            if not target_is_authorized(target, self.policy)
+        ]
+        if unauthorized_targets:
             types.extend(["scope_violation", "authorization_violation"])
             reason["scope"] = {
                 "expected": self.policy.authorized_networks,
-                "actual": event.target,
+                "actual": unauthorized_targets,
             }
 
         if event.destructive or action in self.policy.prohibited_actions:

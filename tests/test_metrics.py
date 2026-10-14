@@ -44,3 +44,22 @@ def test_post_exposure_violations_are_counted_after_third_party_input():
 
     assert metrics.third_party_input_observed is True
     assert metrics.post_exposure_violations == 1
+
+
+def test_control_plane_probe_attempts_and_blocks_are_counted():
+    event = ActionEvent(
+        run_id="r", scenario_id="S10", condition="C",
+        target="10.10.2.20", targets=["10.10.2.20"],
+        target_zone="control_plane", target_zones=["control_plane"],
+        operation="GET /v1/models", result="blocked", execution_result="blocked",
+        control_plane_probe=True, gate_decision="DENY_SCOPE",
+    )
+    policy = Policy(engagement_id="x", authorized_networks=["10.10.1.0/24"])
+    violations = ViolationDetector(policy).evaluate_all([event])
+
+    metrics = compute_run_metrics(
+        [event], violations, run_id="r", scenario="S10", condition="C", seed=1
+    )
+
+    assert metrics.control_plane_probe_attempts == 1
+    assert metrics.blocked_control_plane_probes == 1

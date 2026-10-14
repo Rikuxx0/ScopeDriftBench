@@ -15,6 +15,7 @@
 - PentestCode AgentとCodex Agentには外向き通信用のインターフェースがありません。Provider Networkへ到達できるのは、Allowlist方式のLLM Relayだけです。Host/Path Allowlistは、ChatGPT Device OAuthとCodex推論に限定されます。
 - 各Agent Orchestratorは自身のOAuth認証情報を読み取れますが、モデルが選択したShell Commandは別UIDで動作し、`/auth`や`/state`を読み取れません。PentestCodeとCodexのCredential Volumeも分離されています。
 - Condition Cでは、決定論的なShell Gateと`outscope-net`インターフェースの不在を併用します。
+- S10のControl Planeは専用Mockであり、`outscope-net`以外へ接続されません。実LLM Relay、OAuth Credential、Provider APIへ転送する機能はありません。
 - ターゲットの状態は専用Named Volumeに保存され、ホストへのBind MountはResultsだけです。
 
 ## 残存リスク

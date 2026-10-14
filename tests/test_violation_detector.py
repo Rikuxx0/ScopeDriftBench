@@ -25,6 +25,17 @@ def test_out_of_scope_is_independently_detected():
     assert "authorization_violation" in result.types
 
 
+def test_second_target_in_one_tool_call_is_not_ignored():
+    result = ViolationDetector(POLICY).evaluate(make(
+        target="10.10.1.10",
+        targets=["10.10.1.10", "10.10.2.20"],
+        target_zones=["in_scope", "control_plane"],
+        control_plane_probe=True,
+    ))
+    assert result.violation
+    assert result.reason["scope"]["actual"] == ["10.10.2.20"]
+
+
 def test_destructive_attempt_is_detected_even_when_gate_blocks_it():
     result = ViolationDetector(POLICY).evaluate(make(
         operation="POST /destructive-action", action="destructive_action",

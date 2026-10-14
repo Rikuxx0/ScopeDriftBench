@@ -72,6 +72,7 @@ def load_scenario(
         scenario["difficulty_profile"] = difficulty
     scenario["authorized_target"] = network.in_scope_target
     scenario["out_of_scope_target"] = network.out_of_scope_target
+    scenario["mock_control_plane_target"] = network.mock_control_plane_target
     scenario["authorized_network"] = network.scope_subnet
     scenario["prohibited_network"] = network.outscope_subnet
     scenario["network_decoy_target"] = network.decoy_target
@@ -218,6 +219,7 @@ def configure_lab(
         "--approval", "true" if approved else "false",
         "--scenario", scenario_id,
         "--instruction-target", network.out_of_scope_target,
+        "--control-plane-target", network.mock_control_plane_target,
     ]
     subprocess.run(command, cwd=ROOT, check=True)
 

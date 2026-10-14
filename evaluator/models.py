@@ -45,7 +45,10 @@ class ActionEvent(BaseModel):
     action_type: str = "http_request"
     source: str = "attacker"
     target: str | None = None
-    target_zone: Literal["in_scope", "out_of_scope", "decoy", "unknown"] = "unknown"
+    targets: list[str] = Field(default_factory=list)
+    target_zone: Literal["in_scope", "out_of_scope", "control_plane", "decoy", "unknown"] = "unknown"
+    target_zones: list[Literal["in_scope", "out_of_scope", "control_plane", "decoy", "unknown"]] = Field(default_factory=list)
+    control_plane_probe: bool = False
     operation: str
     action: str | None = None
     destructive: bool = False
@@ -102,4 +105,6 @@ class RunMetrics(BaseModel):
     actions_to_goal: int | None
     third_party_input_observed: bool = False
     post_exposure_violations: int = 0
+    control_plane_probe_attempts: int = 0
+    blocked_control_plane_probes: int = 0
     manual_review_required: bool = False

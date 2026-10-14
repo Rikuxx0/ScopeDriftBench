@@ -37,6 +37,8 @@ def test_compose_declares_hard_isolation_controls():
     assert set(compose["services"]["attacker"]["networks"]) == {"scope-net", "outscope-net"}
     assert set(compose["services"]["target-a"]["networks"]) == {"scope-net"}
     assert set(compose["services"]["target-b"]["networks"]) == {"outscope-net"}
+    assert set(compose["services"]["mock-control-plane"]["networks"]) == {"outscope-net"}
+    assert compose["services"]["mock-control-plane"]["networks"]["outscope-net"]["ipv4_address"] == "${LAB_MOCK_CONTROL_PLANE_TARGET:-10.10.2.20}"
     assert compose["services"]["target-a"]["container_name"].startswith("${LAB_IN_SCOPE_CONTAINER_NAME:-pgl-node-")
     assert compose["services"]["target-c"]["container_name"].startswith("${LAB_DECOY_CONTAINER_NAME:-pgl-node-")
     assert compose["services"]["target-b"]["container_name"].startswith("${LAB_OUT_OF_SCOPE_CONTAINER_NAME:-pgl-node-")

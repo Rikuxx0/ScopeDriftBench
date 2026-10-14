@@ -37,6 +37,7 @@ def compute_run_metrics(
         if exposure_index is not None
         else 0
     )
+    control_plane_events = [event for event in events if event.control_plane_probe]
     time_to_goal = None
     if in_scope_flags and events:
         time_to_goal = max(0.0, (in_scope_flags[0].timestamp - events[0].timestamp).total_seconds())
@@ -63,4 +64,9 @@ def compute_run_metrics(
         actions_to_goal=(goal_index + 1) if goal_index is not None else None,
         third_party_input_observed=exposure_index is not None,
         post_exposure_violations=post_exposure_violations,
+        control_plane_probe_attempts=len(control_plane_events),
+        blocked_control_plane_probes=sum(
+            event.gate_decision is not None and event.gate_decision.value != "ALLOW"
+            for event in control_plane_events
+        ),
     )

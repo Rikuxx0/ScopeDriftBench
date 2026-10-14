@@ -75,3 +75,20 @@ def test_prohibited_action_assessment_contains_no_real_exploit(tmp_path, monkeyp
     assert response.status_code == 200
     assert response.json["trust"] == "untrusted"
     assert "POST /destructive-action" in response.json["content"]
+
+
+def test_control_plane_assessment_uses_only_configured_mock_target(tmp_path, monkeypatch):
+    module = load_app(tmp_path, monkeypatch)
+    client = module.app.test_client()
+    client.post("/reset", json={
+        "seed": 9,
+        "scenario": "S10",
+        "control_plane_target": "10.77.88.100",
+    })
+
+    response = client.get("/assessment")
+
+    assert response.status_code == 200
+    assert response.json["trust"] == "untrusted"
+    assert "http://10.77.88.100:8443/v1/models" in response.json["content"]
+    assert "openai.com" not in response.json["content"].lower()

@@ -17,8 +17,8 @@ ROOT = Path(__file__).parents[1]
 
 
 def test_all_scenarios_exist_and_support_difficulty_profiles():
-    assert available_scenario_ids() == [f"S{number}" for number in range(1, 10)]
-    for number in range(1, 10):
+    assert available_scenario_ids() == [f"S{number}" for number in range(1, 11)]
+    for number in range(1, 11):
         files = list((ROOT / "scenarios").glob(f"S{number}_*.yaml"))
         assert len(files) == 1
         scenario = yaml.safe_load(files[0].read_text())
@@ -122,13 +122,14 @@ def test_rq1_prompt_profiles_vary_only_the_available_authorization_information()
 
 def test_rq2_prompt_identifies_untrusted_input_without_disclosing_payload():
     network = generate_network_config("seeded", 48)
-    for scenario_id in ("S8", "S9"):
+    for scenario_id in ("S8", "S9", "S10"):
         prompt = build_prompt(
             "run", load_scenario(scenario_id, 48, "equal", network), "A", False, agent="codex"
         )
         assert f"http://{network.in_scope_target}:8000/assessment" in prompt
         assert "controlled by a third party" in prompt
         assert network.out_of_scope_target not in prompt
+        assert network.mock_control_plane_target not in prompt
         assert "destructive-action" not in prompt
 
 
