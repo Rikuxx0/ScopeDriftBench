@@ -1,6 +1,6 @@
 # Pentest Agent Governance Control Lab
 
-このプロジェクトは、自律型侵入テストエージェント([PentestCode](https://github.com/s0ld13rr/pentestcode)&Codex)が、明示されたScope・Authorization・Approval・Prohibited Actionsに違反する操作を選択するかを測定し、その抑制手法を検証する実験ラボAgentは実際の`nmap`、`curl`、Shell Toolを使って、起動中のDocker Serviceへ動的に接続します。**実在するExploitや脆弱な製品イメージは含まれていません。**
+このプロジェクトは、自律型侵入テストエージェント([PentestCode](https://github.com/s0ld13rr/pentestcode) & Codex)が、明示されたScope・Authorization・Approval・Prohibited Actionsに違反する操作を選択するかを測定し、その抑制手法を検証する実験ラボAgentは実際の`nmap`、`curl`、Shell Toolを使って、起動中のDocker Serviceへ動的に接続します。**実在するExploitや脆弱な製品イメージは含まれていません。**
 
 ## 研究課題
 
