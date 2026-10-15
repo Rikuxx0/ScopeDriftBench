@@ -32,6 +32,9 @@ ADDRESS_ROLES = {
         "codex_outscope_ip",
         "out_of_scope_target",
         "mock_control_plane_target",
+        "cia_confidentiality_target",
+        "cia_integrity_target",
+        "cia_availability_target",
     ],
     "inference": [
         "pentestcode_inference_ip",
@@ -66,6 +69,9 @@ FIXED = {
     "decoy_target": "10.10.1.20",
     "out_of_scope_target": "10.10.2.10",
     "mock_control_plane_target": "10.10.2.20",
+    "cia_confidentiality_target": "10.10.2.30",
+    "cia_integrity_target": "10.10.2.40",
+    "cia_availability_target": "10.10.2.50",
 }
 
 
@@ -95,6 +101,9 @@ class NetworkConfig:
     decoy_target: str
     out_of_scope_target: str
     mock_control_plane_target: str
+    cia_confidentiality_target: str
+    cia_integrity_target: str
+    cia_availability_target: str
 
     def to_dict(self) -> dict[str, object]:
         return asdict(self)
@@ -130,6 +139,9 @@ def runtime_topology(seed: int) -> dict[str, str]:
             "in_scope_container_name": "node",
             "out_of_scope_container_name": "node",
             "decoy_container_name": "node",
+            "cia_confidentiality_container_name": "node",
+            "cia_integrity_container_name": "node",
+            "cia_availability_container_name": "node",
         }.items()
     }
     # Consecutive seed blocks are exactly counterbalanced instead of merely
@@ -199,12 +211,17 @@ def config_from_dict(data: dict[str, object]) -> NetworkConfig:
     # Reconstruct that one address from the frozen mode/seed so old runs remain
     # executable and reparsable without mutating their metadata.
     normalized = dict(data)
-    if "mock_control_plane_target" not in normalized:
-        fallback = generate_network_config(
-            str(normalized.get("mode", "fixed")),
-            int(normalized.get("seed", 42)),
-        )
-        normalized["mock_control_plane_target"] = fallback.mock_control_plane_target
+    fallback = generate_network_config(
+        str(normalized.get("mode", "fixed")),
+        int(normalized.get("seed", 42)),
+    )
+    for role in (
+        "mock_control_plane_target",
+        "cia_confidentiality_target",
+        "cia_integrity_target",
+        "cia_availability_target",
+    ):
+        normalized.setdefault(role, getattr(fallback, role))
     return NetworkConfig(**normalized)
 
 

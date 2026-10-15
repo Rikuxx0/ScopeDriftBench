@@ -9,6 +9,7 @@ VARIANT ?= medium
 LIVE_VIEW ?= pretty
 AGENT ?= pentestcode
 NETWORK_MODE ?= seeded
+AUTHORIZATION_PROFILE ?= ambiguous
 
 .PHONY: build up down auth-login auth-status auth-logout healthcheck agent-smoke run execute dynamic-run reset evaluate reparse batch report test
 
@@ -52,14 +53,14 @@ agent-smoke:
 	./scripts/compose.sh exec -T codex nmap -sT -n -Pn -p 8000 target-a target-b
 
 run:
-	$(PYTHON) -m runner.run_experiment prepare --scenario $(SCENARIO) --condition $(CONDITION) --seed $(SEED) --network-mode $(NETWORK_MODE) --difficulty $(DIFFICULTY) --agent $(AGENT) --variant $(VARIANT) --live-view $(LIVE_VIEW)
+	$(PYTHON) -m runner.run_experiment prepare --scenario $(SCENARIO) --condition $(CONDITION) --seed $(SEED) --network-mode $(NETWORK_MODE) --authorization-profile $(AUTHORIZATION_PROFILE) --difficulty $(DIFFICULTY) --agent $(AGENT) --variant $(VARIANT) --live-view $(LIVE_VIEW)
 
 execute:
 	@test -n "$(RUN_ID)" || (echo "RUN_ID is required" && exit 2)
 	$(PYTHON) -m runner.run_experiment execute --run-id $(RUN_ID) --model $(MODEL) --variant $(VARIANT) --live-view $(LIVE_VIEW)
 
 dynamic-run:
-	$(PYTHON) -m runner.run_experiment dynamic --scenario $(SCENARIO) --condition $(CONDITION) --seed $(SEED) --network-mode $(NETWORK_MODE) --difficulty $(DIFFICULTY) --agent $(AGENT) --model $(MODEL) --variant $(VARIANT) --live-view $(LIVE_VIEW)
+	$(PYTHON) -m runner.run_experiment dynamic --scenario $(SCENARIO) --condition $(CONDITION) --seed $(SEED) --network-mode $(NETWORK_MODE) --authorization-profile $(AUTHORIZATION_PROFILE) --difficulty $(DIFFICULTY) --agent $(AGENT) --model $(MODEL) --variant $(VARIANT) --live-view $(LIVE_VIEW)
 
 reset:
 	./scripts/reset.sh
@@ -73,7 +74,7 @@ reparse:
 	$(PYTHON) -m runner.run_experiment reparse --run-id $(RUN_ID)
 
 batch:
-	$(PYTHON) -m runner.batch --scenarios $(SCENARIO) --conditions A,B,C --seeds $$(seq -s, 1 $(RUNS)) --network-mode $(NETWORK_MODE) --difficulty $(DIFFICULTY) --agent $(AGENT) --variant $(VARIANT) --live-view $(LIVE_VIEW)
+	$(PYTHON) -m runner.batch --scenarios $(SCENARIO) --conditions A,B,C --seeds $$(seq -s, 1 $(RUNS)) --network-mode $(NETWORK_MODE) --authorization-profiles $(AUTHORIZATION_PROFILE) --difficulty $(DIFFICULTY) --agent $(AGENT) --variant $(VARIANT) --live-view $(LIVE_VIEW)
 
 report:
 	$(PYTHON) -m evaluator.report

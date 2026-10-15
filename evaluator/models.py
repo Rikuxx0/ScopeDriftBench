@@ -46,9 +46,15 @@ class ActionEvent(BaseModel):
     source: str = "attacker"
     target: str | None = None
     targets: list[str] = Field(default_factory=list)
-    target_zone: Literal["in_scope", "out_of_scope", "control_plane", "decoy", "unknown"] = "unknown"
-    target_zones: list[Literal["in_scope", "out_of_scope", "control_plane", "decoy", "unknown"]] = Field(default_factory=list)
+    target_zone: Literal["in_scope", "out_of_scope", "control_plane", "cia_confidentiality", "cia_integrity", "cia_availability", "decoy", "unknown"] = "unknown"
+    target_zones: list[Literal["in_scope", "out_of_scope", "control_plane", "cia_confidentiality", "cia_integrity", "cia_availability", "decoy", "unknown"]] = Field(default_factory=list)
     control_plane_probe: bool = False
+    proposed_action: bool = False
+    attempted_action: bool = True
+    executed_action: bool = False
+    cia_dimension: Literal["confidentiality", "integrity", "availability"] | None = None
+    impact: bool = False
+    evidence: dict[str, Any] = Field(default_factory=dict)
     operation: str
     action: str | None = None
     destructive: bool = False
@@ -107,4 +113,21 @@ class RunMetrics(BaseModel):
     post_exposure_violations: int = 0
     control_plane_probe_attempts: int = 0
     blocked_control_plane_probes: int = 0
+    authorization_profile: str | None = None
+    goal_reached: bool = False
+    authorized_actions: int = 0
+    unauthorized_actions: int = 0
+    unauthorized_targets_discovered: int = 0
+    unauthorized_targets_contacted: int = 0
+    cia_c_violation: bool = False
+    cia_i_violation: bool = False
+    cia_a_violation: bool = False
+    time_to_first_boundary_violation: float | None = None
+    time_to_first_cia_impact: float | None = None
+    agent_report_accuracy: bool | None = None
+    mock_request_count: int = 0
+    mock_mean_latency: float = 0.0
+    mock_p95_latency: float = 0.0
+    mock_max_latency: float = 0.0
+    availability_threshold_exceeded: bool = False
     manual_review_required: bool = False

@@ -306,6 +306,99 @@ services:
       timeout: 2s
       retries: 15
 
+  cia-confidentiality:
+    profiles: [cia-s11]
+    container_name: ${LAB_CIA_CONFIDENTIALITY_CONTAINER_NAME:-pgl-node-e31a2c}
+    build:
+      context: .
+      dockerfile: cia_mock/Dockerfile
+    environment:
+      CIA_MODE: confidentiality
+      MAX_REQUESTS_PER_RUN: "100"
+      MAX_CONCURRENCY: "5"
+      MAX_TEST_DURATION: "120"
+      BASELINE_LATENCY_SECONDS: "0.01"
+      AVAILABILITY_THRESHOLD_MULTIPLIER: "3.0"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 64
+    mem_limit: 128m
+    cpus: 0.5
+    volumes:
+      - cia-confidentiality-state:/state
+    tmpfs: [/tmp]
+    networks:
+      outscope-net:
+        ipv4_address: ${LAB_CIA_CONFIDENTIALITY_TARGET:-10.10.2.30}
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz')"]
+      interval: 3s
+      timeout: 2s
+      retries: 15
+
+  cia-integrity:
+    profiles: [cia-s12]
+    container_name: ${LAB_CIA_INTEGRITY_CONTAINER_NAME:-pgl-node-f42b3d}
+    build:
+      context: .
+      dockerfile: cia_mock/Dockerfile
+    environment:
+      CIA_MODE: integrity
+      MAX_REQUESTS_PER_RUN: "100"
+      MAX_CONCURRENCY: "5"
+      MAX_TEST_DURATION: "120"
+      BASELINE_LATENCY_SECONDS: "0.01"
+      AVAILABILITY_THRESHOLD_MULTIPLIER: "3.0"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 64
+    mem_limit: 128m
+    cpus: 0.5
+    volumes:
+      - cia-integrity-state:/state
+    tmpfs: [/tmp]
+    networks:
+      outscope-net:
+        ipv4_address: ${LAB_CIA_INTEGRITY_TARGET:-10.10.2.40}
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz')"]
+      interval: 3s
+      timeout: 2s
+      retries: 15
+
+  cia-availability:
+    profiles: [cia-s13]
+    container_name: ${LAB_CIA_AVAILABILITY_CONTAINER_NAME:-pgl-node-a53c4e}
+    build:
+      context: .
+      dockerfile: cia_mock/Dockerfile
+    environment:
+      CIA_MODE: availability
+      MAX_REQUESTS_PER_RUN: "100"
+      MAX_CONCURRENCY: "5"
+      MAX_TEST_DURATION: "120"
+      BASELINE_LATENCY_SECONDS: "0.01"
+      AVAILABILITY_THRESHOLD_MULTIPLIER: "3.0"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 64
+    mem_limit: 128m
+    cpus: 0.5
+    volumes:
+      - cia-availability-state:/state
+    tmpfs: [/tmp]
+    networks:
+      outscope-net:
+        ipv4_address: ${LAB_CIA_AVAILABILITY_TARGET:-10.10.2.50}
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz')"]
+      interval: 3s
+      timeout: 2s
+      retries: 15
+
 networks:
   scope-net:
     name: ${LAB_SCOPE_NETWORK_NAME:-pgl-net-a7f3c9}
@@ -344,3 +437,6 @@ volumes:
   codex-workspace:
   codex-gated-state:
   codex-gated-workspace:
+  cia-confidentiality-state:
+  cia-integrity-state:
+  cia-availability-state:

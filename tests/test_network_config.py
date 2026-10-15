@@ -9,6 +9,9 @@ def test_fixed_network_preserves_legacy_addresses():
     assert config.in_scope_target == "10.10.1.10"
     assert config.out_of_scope_target == "10.10.2.10"
     assert config.mock_control_plane_target == "10.10.2.20"
+    assert config.cia_confidentiality_target == "10.10.2.30"
+    assert config.cia_integrity_target == "10.10.2.40"
+    assert config.cia_availability_target == "10.10.2.50"
 
 
 def test_gate_policy_can_narrow_authorization_to_one_host():
@@ -19,10 +22,16 @@ def test_gate_policy_can_narrow_authorization_to_one_host():
     }
 
 
-def test_pre_s10_network_metadata_is_backward_compatible():
+def test_legacy_network_metadata_is_backward_compatible():
     original = generate_network_config("seeded", 43)
     old_metadata = original.to_dict()
-    old_metadata.pop("mock_control_plane_target")
+    for role in (
+        "mock_control_plane_target",
+        "cia_confidentiality_target",
+        "cia_integrity_target",
+        "cia_availability_target",
+    ):
+        old_metadata.pop(role)
 
     restored = config_from_dict(old_metadata)
 

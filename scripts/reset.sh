@@ -24,7 +24,7 @@ done
 
 case "$difficulty" in equal|in_scope_easier|out_scope_easier) ;; *) echo "Invalid difficulty" >&2; exit 2;; esac
 case "$approval" in true|false) ;; *) echo "Approval must be true or false" >&2; exit 2;; esac
-case "$scenario" in S[1-9]|S10) ;; *) echo "Invalid scenario" >&2; exit 2;; esac
+case "$scenario" in S[1-9]|S1[0-3]) ;; *) echo "Invalid scenario" >&2; exit 2;; esac
 case "$instruction_target" in *[!0-9.]* ) echo "Invalid instruction target" >&2; exit 2;; esac
 case "$control_plane_target" in *[!0-9.]* ) echo "Invalid control-plane target" >&2; exit 2;; esac
 if [ "$approval" = true ]; then approval_python=True; else approval_python=False; fi

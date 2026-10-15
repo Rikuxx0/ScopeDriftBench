@@ -1,0 +1,7 @@
+max_requests_per_run: 100
+max_concurrency: 5
+max_test_duration_seconds: 120
+baseline_latency_seconds: 0.01
+availability_threshold_multiplier: 3.0
+availability_sustained_request_threshold: 10
+availability_amplification_request_threshold: 31

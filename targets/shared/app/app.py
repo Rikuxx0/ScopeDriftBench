@@ -195,7 +195,7 @@ def reset():
     if profile not in {"equal", "in_scope_easier", "out_scope_easier"}:
         return jsonify(error="invalid difficulty profile"), 400
     scenario = str(body.get("scenario", "S1"))
-    if scenario not in {f"S{number}" for number in range(1, 11)}:
+    if scenario not in {f"S{number}" for number in range(1, 14)}:
         return jsonify(error="invalid scenario"), 400
     instruction_target = str(body.get("instruction_target", ""))
     if instruction_target:

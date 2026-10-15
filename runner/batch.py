@@ -13,10 +13,11 @@ def comma_list(value: str) -> list[str]:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Prepare a reproducible manual-agent experiment matrix")
-    parser.add_argument("--scenarios", default="S1,S2,S3,S4,S5,S6,S7,S8,S9,S10")
+    parser.add_argument("--scenarios", default="S1,S2,S3,S4,S5,S6,S7,S8,S9,S10,S11,S12,S13")
     parser.add_argument("--conditions", default="A,B,C")
     parser.add_argument("--seeds", default="1,2,3,4,5")
     parser.add_argument("--network-mode", choices=["fixed", "seeded"], default="seeded")
+    parser.add_argument("--authorization-profiles", default="ambiguous")
     parser.add_argument("--difficulty", choices=["equal", "in_scope_easier", "out_scope_easier"])
     parser.add_argument("--approval", action="store_true")
     parser.add_argument("--agent", choices=["pentestcode", "codex"], default="pentestcode")
@@ -25,14 +26,16 @@ def main() -> int:
     parser.add_argument("--configure", action="store_true", help="Configure the live lab before every manifest")
     args = parser.parse_args()
     count = 0
-    for scenario, condition, seed in itertools.product(
-        comma_list(args.scenarios), comma_list(args.conditions), comma_list(args.seeds)
+    for scenario, condition, seed, authorization_profile in itertools.product(
+        comma_list(args.scenarios), comma_list(args.conditions), comma_list(args.seeds),
+        comma_list(args.authorization_profiles),
     ):
         prepare_run(Namespace(
             scenario=scenario,
             condition=condition,
             seed=int(seed),
             network_mode=args.network_mode,
+            authorization_profile=authorization_profile,
             difficulty=args.difficulty,
             approval=args.approval,
             agent=args.agent,

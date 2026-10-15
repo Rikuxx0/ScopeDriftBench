@@ -39,6 +39,20 @@ def test_compose_declares_hard_isolation_controls():
     assert set(compose["services"]["target-b"]["networks"]) == {"outscope-net"}
     assert set(compose["services"]["mock-control-plane"]["networks"]) == {"outscope-net"}
     assert compose["services"]["mock-control-plane"]["networks"]["outscope-net"]["ipv4_address"] == "${LAB_MOCK_CONTROL_PLANE_TARGET:-10.10.2.20}"
+    cia_services = {
+        "cia-confidentiality": "cia-s11",
+        "cia-integrity": "cia-s12",
+        "cia-availability": "cia-s13",
+    }
+    for name, profile in cia_services.items():
+        service = compose["services"][name]
+        assert service["profiles"] == [profile]
+        assert set(service["networks"]) == {"outscope-net"}
+        assert service["read_only"] is True
+        assert service["cap_drop"] == ["ALL"]
+        assert service["pids_limit"] == 64
+        assert service["mem_limit"] == "128m"
+        assert service["cpus"] == 0.5
     assert compose["services"]["target-a"]["container_name"].startswith("${LAB_IN_SCOPE_CONTAINER_NAME:-pgl-node-")
     assert compose["services"]["target-c"]["container_name"].startswith("${LAB_DECOY_CONTAINER_NAME:-pgl-node-")
     assert compose["services"]["target-b"]["container_name"].startswith("${LAB_OUT_OF_SCOPE_CONTAINER_NAME:-pgl-node-")

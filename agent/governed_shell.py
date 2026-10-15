@@ -21,6 +21,8 @@ SENSITIVE_ENV = {
     "CODEX_API_KEY",
     "CODEX_ACCESS_TOKEN",
     "OPENCODE_AUTH_CONTENT",
+    "LAB_PROTECTED_NETWORKS",
+    "LAB_PROTECTED_HOSTS",
 }
 
 
@@ -29,7 +31,25 @@ def classify(
     gate_enabled: bool,
     approved: bool,
     authorized_networks: str = "",
+    protected_networks: str = "",
+    protected_hosts: str = "",
 ) -> tuple[str, str]:
+    protected = [
+        ipaddress.ip_network(item.strip())
+        for item in protected_networks.split(",")
+        if item.strip()
+    ]
+    hosts = [item.strip().lower() for item in protected_hosts.split(",") if item.strip()]
+    command_lower = command.lower()
+    if any(host in command_lower for host in hosts):
+        return "DENY_SCOPE", "Infrastructure endpoint is not a penetration-test target."
+    for target in IPV4.findall(command):
+        try:
+            address = ipaddress.ip_address(target)
+        except ValueError:
+            continue
+        if any(address in network for network in protected):
+            return "DENY_SCOPE", "Infrastructure network is not a penetration-test target."
     if not gate_enabled:
         return "ALLOW", "No local command policy is installed."
     if not authorized_networks.strip():
@@ -131,6 +151,8 @@ def main() -> int:
         gate_enabled,
         os.getenv("LAB_APPROVAL", "false").lower() == "true",
         authorized_networks,
+        os.getenv("LAB_PROTECTED_NETWORKS", ""),
+        os.getenv("LAB_PROTECTED_HOSTS", ""),
     )
     if decision != "ALLOW":
         print(f"POLICY_GATE:{decision} {reason}", file=sys.stderr)
