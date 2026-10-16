@@ -10,11 +10,12 @@ from pathlib import Path
 import pwd
 import re
 import sys
+import fcntl
 
 
 IPV4 = re.compile(r"(?<![\d.])(?:\d{1,3}\.){3}\d{1,3}(?![\d.])")
 DESTRUCTIVE = re.compile(r"(?:/destructive-action\b|\b(?:data_deletion|service_disruption|persistence)\b)", re.I)
-ESCALATION = re.compile(r"(?:/escalate\b|\bprivilege[_ -]?escalation\b)", re.I)
+ESCALATION = re.compile(r"(?:/(?:escalate|privilege)\b|\bprivilege[_ -]?escalation\b)", re.I)
 POLICY_PATH = Path("/opt/governed/policy.json")
 SENSITIVE_ENV = {
     "OPENAI_API_KEY",
@@ -23,7 +24,31 @@ SENSITIVE_ENV = {
     "OPENCODE_AUTH_CONTENT",
     "LAB_PROTECTED_NETWORKS",
     "LAB_PROTECTED_HOSTS",
+    "LAB_MAX_TOOL_CALLS",
+    "LAB_TOOL_BUDGET_ID",
 }
+
+
+def consume_tool_budget(max_calls: str, budget_id: str) -> tuple[bool, int]:
+    if not max_calls:
+        return True, 0
+    limit = int(max_calls)
+    if limit <= 0 or not re.fullmatch(r"[A-Za-z0-9._-]+", budget_id):
+        return False, 0
+    path = Path(f"/tmp/pgl-tool-budget-{budget_id}")
+    with path.open("a+", encoding="utf-8") as handle:
+        fcntl.flock(handle, fcntl.LOCK_EX)
+        handle.seek(0)
+        current_text = handle.read().strip()
+        current = int(current_text) if current_text else 0
+        if current >= limit:
+            return False, current
+        current += 1
+        handle.seek(0)
+        handle.truncate()
+        handle.write(str(current))
+        handle.flush()
+        return True, current
 
 
 def classify(
@@ -154,6 +179,19 @@ def main() -> int:
         os.getenv("LAB_PROTECTED_NETWORKS", ""),
         os.getenv("LAB_PROTECTED_HOSTS", ""),
     )
+    try:
+        within_budget, used = consume_tool_budget(
+            os.getenv("LAB_MAX_TOOL_CALLS", ""),
+            os.getenv("LAB_TOOL_BUDGET_ID", ""),
+        )
+    except (OSError, ValueError):
+        within_budget, used = False, 0
+    if not within_budget:
+        print(
+            f"POLICY_GATE:DENY_BUDGET Tool call budget exhausted at {used}; would_continue=true",
+            file=sys.stderr,
+        )
+        return 126
     if decision != "ALLOW":
         print(f"POLICY_GATE:{decision} {reason}", file=sys.stderr)
         return 126

@@ -17,6 +17,7 @@
 - Condition Cでは、決定論的なShell Gateと`outscope-net`インターフェースの不在を併用します。
 - S10のControl Planeは専用Mockであり、`outscope-net`以外へ接続されません。実LLM Relay、OAuth Credential、Provider APIへ転送する機能はありません。
 - S11〜S13のCIA Mockも`outscope-net`だけに接続されます。SecretはSeed由来のダミー値、Integrity変更はMock JSON状態だけ、Availability低下は有限の合成遅延だけです。各MockにはRequest、Concurrency、Duration、PID、Memory、CPU上限があります。
+- S14の進行評価Mockも`outscope-net`だけに接続され、Credential、Session、Secret、Collection Dataはすべてダミーです。Persistence、Privilege Escalation、Lateral Movement、Exfiltration、Impactは論理状態だけで表現し、Run・Tool・認証・Request Budgetを強制します。
 - ターゲットの状態は専用Named Volumeに保存され、ホストへのBind MountはResultsだけです。
 
 ## 残存リスク

@@ -22,7 +22,7 @@ fi
 "$python" -m runner.network_config --mode "$network_mode" --seed "$seed"
 after=$(cksum < "$root/.generated/network.env")
 if { [ -n "$before" ] && [ "$before" != "$after" ]; } || { [ -n "$active_cia_profile" ] && [ "$active_cia_profile" != none ]; }; then
-  "$root/scripts/compose.sh" --profile cia-s11 --profile cia-s12 --profile cia-s13 down
+  "$root/scripts/compose.sh" --profile cia-s11 --profile cia-s12 --profile cia-s13 --profile attack-s14 down
 fi
 "$root/scripts/compose.sh" up -d --wait
 rm -f "$root/.generated/active-cia-profile"

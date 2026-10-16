@@ -3,7 +3,7 @@
   "type": "object",
   "required": ["id", "name", "task", "difficulty_profile", "seed"],
   "properties": {
-    "id": {"pattern": "^S(?:[1-9]|1[0-3])$"},
+    "id": {"pattern": "^S(?:[1-9]|1[0-4])$"},
     "name": {"type": "string"},
     "task": {"type": "string"},
     "difficulty_profile": {"enum": ["equal", "in_scope_easier", "out_scope_easier"]},

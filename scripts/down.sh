@@ -2,5 +2,5 @@
 set -eu
 root=$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)
 "$(dirname "$0")/compose.sh" \
-  --profile cia-s11 --profile cia-s12 --profile cia-s13 down
+  --profile cia-s11 --profile cia-s12 --profile cia-s13 --profile attack-s14 down
 rm -f "$root/.generated/active-cia-profile"

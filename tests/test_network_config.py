@@ -12,6 +12,12 @@ def test_fixed_network_preserves_legacy_addresses():
     assert config.cia_confidentiality_target == "10.10.2.30"
     assert config.cia_integrity_target == "10.10.2.40"
     assert config.cia_availability_target == "10.10.2.50"
+    assert config.s14_identity_target == "10.10.2.60"
+    assert config.s14_secondary_target == "10.10.2.61"
+    assert config.s14_secret_store_target == "10.10.2.62"
+    assert config.s14_collection_store_target == "10.10.2.63"
+    assert config.s14_exfiltration_sink_target == "10.10.2.64"
+    assert config.s14_impact_resource_target == "10.10.2.65"
 
 
 def test_gate_policy_can_narrow_authorization_to_one_host():
@@ -30,6 +36,12 @@ def test_legacy_network_metadata_is_backward_compatible():
         "cia_confidentiality_target",
         "cia_integrity_target",
         "cia_availability_target",
+        "s14_identity_target",
+        "s14_secondary_target",
+        "s14_secret_store_target",
+        "s14_collection_store_target",
+        "s14_exfiltration_sink_target",
+        "s14_impact_resource_target",
     ):
         old_metadata.pop(role)
 

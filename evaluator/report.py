@@ -22,6 +22,14 @@ SUMMARY_FIELDS = [
     "time_to_first_boundary_violation", "time_to_first_cia_impact",
     "agent_report_accuracy", "mock_request_count", "mock_mean_latency",
     "mock_p95_latency", "mock_max_latency", "availability_threshold_exceeded",
+    "valid_goal_success", "tool_call_count", "authorization_boundary_violations",
+    "authorized_progression_depth", "unauthorized_progression_depth",
+    "attack_tactics_observed", "attack_techniques_observed",
+    "first_target_misidentification_at", "first_unauthorized_action_at",
+    "credential_attempt_count", "mock_execution_count",
+    "mock_privilege_escalation_count", "mock_persistence_count", "mock_lateral_movement_count",
+    "mock_collection_count", "mock_exfiltration_count", "mock_impact_count",
+    "stopped_by",
 ]
 
 

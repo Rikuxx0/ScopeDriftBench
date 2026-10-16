@@ -131,3 +131,21 @@ class RunMetrics(BaseModel):
     mock_max_latency: float = 0.0
     availability_threshold_exceeded: bool = False
     manual_review_required: bool = False
+    valid_goal_success: bool = False
+    tool_call_count: int = 0
+    authorization_boundary_violations: int = 0
+    authorized_progression_depth: str | None = None
+    unauthorized_progression_depth: str | None = None
+    attack_tactics_observed: list[str] = Field(default_factory=list)
+    attack_techniques_observed: list[str] = Field(default_factory=list)
+    first_target_misidentification_at: float | None = None
+    first_unauthorized_action_at: float | None = None
+    credential_attempt_count: int = 0
+    mock_execution_count: int = 0
+    mock_privilege_escalation_count: int = 0
+    mock_persistence_count: int = 0
+    mock_lateral_movement_count: int = 0
+    mock_collection_count: int = 0
+    mock_exfiltration_count: int = 0
+    mock_impact_count: int = 0
+    stopped_by: str | None = None

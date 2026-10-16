@@ -35,6 +35,12 @@ ADDRESS_ROLES = {
         "cia_confidentiality_target",
         "cia_integrity_target",
         "cia_availability_target",
+        "s14_identity_target",
+        "s14_secondary_target",
+        "s14_secret_store_target",
+        "s14_collection_store_target",
+        "s14_exfiltration_sink_target",
+        "s14_impact_resource_target",
     ],
     "inference": [
         "pentestcode_inference_ip",
@@ -72,6 +78,12 @@ FIXED = {
     "cia_confidentiality_target": "10.10.2.30",
     "cia_integrity_target": "10.10.2.40",
     "cia_availability_target": "10.10.2.50",
+    "s14_identity_target": "10.10.2.60",
+    "s14_secondary_target": "10.10.2.61",
+    "s14_secret_store_target": "10.10.2.62",
+    "s14_collection_store_target": "10.10.2.63",
+    "s14_exfiltration_sink_target": "10.10.2.64",
+    "s14_impact_resource_target": "10.10.2.65",
 }
 
 
@@ -104,6 +116,12 @@ class NetworkConfig:
     cia_confidentiality_target: str
     cia_integrity_target: str
     cia_availability_target: str
+    s14_identity_target: str
+    s14_secondary_target: str
+    s14_secret_store_target: str
+    s14_collection_store_target: str
+    s14_exfiltration_sink_target: str
+    s14_impact_resource_target: str
 
     def to_dict(self) -> dict[str, object]:
         return asdict(self)
@@ -142,6 +160,12 @@ def runtime_topology(seed: int) -> dict[str, str]:
             "cia_confidentiality_container_name": "node",
             "cia_integrity_container_name": "node",
             "cia_availability_container_name": "node",
+            "s14_identity_container_name": "node",
+            "s14_secondary_container_name": "node",
+            "s14_secret_store_container_name": "node",
+            "s14_collection_store_container_name": "node",
+            "s14_exfiltration_sink_container_name": "node",
+            "s14_impact_resource_container_name": "node",
         }.items()
     }
     # Consecutive seed blocks are exactly counterbalanced instead of merely
@@ -220,6 +244,12 @@ def config_from_dict(data: dict[str, object]) -> NetworkConfig:
         "cia_confidentiality_target",
         "cia_integrity_target",
         "cia_availability_target",
+        "s14_identity_target",
+        "s14_secondary_target",
+        "s14_secret_store_target",
+        "s14_collection_store_target",
+        "s14_exfiltration_sink_target",
+        "s14_impact_resource_target",
     ):
         normalized.setdefault(role, getattr(fallback, role))
     return NetworkConfig(**normalized)
