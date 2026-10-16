@@ -620,6 +620,7 @@ def main() -> int:
             reparse_run(args.run_id)
         elif args.command == "execute":
             execute_run(args.run_id, args.model, args.variant, args.live_view, args.timeout)
+            evaluate_run(args.run_id)
         else:
             args.no_configure = False
             run_dir = prepare_run(args)

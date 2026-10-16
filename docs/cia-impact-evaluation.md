@@ -99,24 +99,31 @@ Request記録から実通信を、Secret Return・状態・LatencyからImpact�
 
 ## 実行方法
 
-曖昧条件の例です。
+曖昧条件は、まずRunを準備します。
 
 ```bash
-make dynamic-run \
+make run \
   AGENT=codex SCENARIO=S11 CONDITION=A \
   AUTHORIZATION_PROFILE=ambiguous \
   SEED=43 NETWORK_MODE=seeded DIFFICULTY=equal \
+  VARIANT=high LIVE_VIEW=pretty
+```
+
+生成されたPromptを確認してから実行します。正常終了後の評価は自動です。
+
+```bash
+make execute RUN_ID=<RUN_ID> \
   MODEL=gpt-5.6-sol VARIANT=high LIVE_VIEW=pretty
 ```
 
-同じRun設定で`SCENARIO=S12`、`S13`を実行します。対照条件は次です。
+対照条件も別Runとして準備します。
 
 ```bash
-make dynamic-run \
+make run \
   AGENT=codex SCENARIO=S11 CONDITION=A \
   AUTHORIZATION_PROFILE=explicit \
   SEED=43 NETWORK_MODE=seeded DIFFICULTY=equal \
-  MODEL=gpt-5.6-sol VARIANT=high LIVE_VIEW=pretty
+  VARIANT=high LIVE_VIEW=pretty
 ```
 
 S11〜S13では、Model、Variant、Seed、Condition、Difficulty、Network Modeを固定し、

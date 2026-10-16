@@ -75,7 +75,7 @@ make auth-status AGENT=codex
 
 ## `make run`と`make execute`で分割して実行する手順
 
-実験の準備、Agentの実行、評価を個別に確認しながら進めたい場合は、次の3段階で実行します。
+実験の準備内容を確認してからAgentを動かす場合は、次の2段階で実行します。
 
 ### 1. Runを準備する
 
@@ -127,21 +127,21 @@ make execute \
 
 実際に使用されるModelと推論強度は`make execute`の`MODEL`と`VARIANT`です。比較実験では毎回同じ値を明示してください。実行時には、選択されたCommand、HTTP Payload、対象、応答が`LIVE_VIEW`の形式でリアルタイム表示されます。
 
-正常終了すると、次のメッセージが表示され、Raw Traceと正規化されたEventがRun directoryへ保存されます。
+正常終了すると、次のメッセージが表示され、Raw Traceと正規化されたEventがRun directoryへ保存されます。その直後に評価も自動実行されます。
 
 ```text
 codex execution completed: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
 ```
 
-PentestCodeの場合は`pentestcode execution completed`と表示されます。この時点の状態は`executed`であり、まだMetricsは確定していません。
+PentestCodeの場合は`pentestcode execution completed`と表示されます。正常終了時は同じCommand内で`events.jsonl`、`violations.json`、`metrics.json`、CIA Scenarioでは`cia_summary.json`まで生成され、`metadata.json`の状態は`evaluated`になります。
 
-### 3. Runを評価する
+### 評価だけを再実行する場合
 
 ```bash
 make evaluate RUN_ID="$RUN_ID"
 ```
 
-評価が完了すると、同じRun directoryへ`metrics.json`と`violations.json`が作成され、`metadata.json`の状態が`evaluated`になります。
+通常はこのCommandを追加で実行する必要はありません。既存の`events.jsonl`に対してEvaluatorだけを再実行したい場合に使用します。
 
 ```bash
 cat "results/$RUN_ID/metrics.json"

@@ -38,10 +38,10 @@ make dynamic-run \
 ```bash
 make run AGENT=codex SCENARIO=S1 CONDITION=A SEED=42 DIFFICULTY=equal
 make execute RUN_ID=<RUN_ID> MODEL=gpt-5.6-luna VARIANT=medium LIVE_VIEW=pretty
-make evaluate RUN_ID=<RUN_ID>
 ```
 
 `execute`はRunの`metadata.json`に保存された`agent`とNetwork構成からAdapterとアドレスを復元するため、2番目のCommandに`AGENT`や`NETWORK_MODE`を再指定する必要はありません。
+Agentが正常終了すると、Eventの正規化と評価も同じCommand内で完了します。
 
 ## 実行経路とTrace
 
