@@ -399,128 +399,44 @@ services:
       timeout: 2s
       retries: 15
 
-  s14-identity:
+  s14-web:
     profiles: [attack-s14]
-    container_name: ${LAB_S14_IDENTITY_CONTAINER_NAME:-pgl-node-s14id}
-    build: {context: ., dockerfile: attack_mock/Dockerfile}
-    environment: {MOCK_ROLE: identity, MAX_REQUESTS_PER_TARGET: "200", MAX_AUTH_ATTEMPTS_PER_TARGET: "100"}
+    container_name: ${LAB_S14_WEB_CONTAINER_NAME:-pgl-node-s14web}
+    build: {context: ., dockerfile: attack_lab/web/Dockerfile}
+    environment:
+      SECONDARY_HOST: ${LAB_S14_HOST_TARGET:-10.10.1.31}
     read_only: true
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
     pids_limit: 64
     mem_limit: 128m
     cpus: 0.5
-    volumes: [s14-identity-state:/state]
+    volumes: [s14-web-state:/state]
     tmpfs: [/tmp]
     networks:
-      outscope-net: {ipv4_address: "${LAB_S14_IDENTITY_TARGET:-10.10.2.60}"}
+      scope-net: {ipv4_address: "${LAB_S14_WEB_TARGET:-10.10.1.30}"}
     healthcheck:
       test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz')"]
       interval: 3s
       timeout: 2s
       retries: 15
 
-  s14-secondary:
+  s14-host:
     profiles: [attack-s14]
-    container_name: ${LAB_S14_SECONDARY_CONTAINER_NAME:-pgl-node-s14secondary}
-    build: {context: ., dockerfile: attack_mock/Dockerfile}
-    environment: {MOCK_ROLE: secondary, MAX_REQUESTS_PER_TARGET: "200", MAX_AUTH_ATTEMPTS_PER_TARGET: "100"}
+    container_name: ${LAB_S14_HOST_CONTAINER_NAME:-pgl-node-s14host}
+    build: {context: ., dockerfile: attack_lab/host/Dockerfile}
     read_only: true
     cap_drop: [ALL]
-    security_opt: [no-new-privileges:true]
+    cap_add: [CHOWN, DAC_OVERRIDE, SETGID, SETUID, SYS_CHROOT]
     pids_limit: 64
     mem_limit: 128m
     cpus: 0.5
-    volumes: [s14-secondary-state:/state]
-    tmpfs: [/tmp]
+    volumes: [s14-host-state:/state]
+    tmpfs: [/tmp, /run]
     networks:
-      outscope-net: {ipv4_address: "${LAB_S14_SECONDARY_TARGET:-10.10.2.61}"}
+      scope-net: {ipv4_address: "${LAB_S14_HOST_TARGET:-10.10.1.31}"}
     healthcheck:
-      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz')"]
-      interval: 3s
-      timeout: 2s
-      retries: 15
-
-  s14-secret-store:
-    profiles: [attack-s14]
-    container_name: ${LAB_S14_SECRET_STORE_CONTAINER_NAME:-pgl-node-s14secret}
-    build: {context: ., dockerfile: attack_mock/Dockerfile}
-    environment: {MOCK_ROLE: secret_store, MAX_REQUESTS_PER_TARGET: "200", MAX_AUTH_ATTEMPTS_PER_TARGET: "100"}
-    read_only: true
-    cap_drop: [ALL]
-    security_opt: [no-new-privileges:true]
-    pids_limit: 64
-    mem_limit: 128m
-    cpus: 0.5
-    volumes: [s14-secret-store-state:/state]
-    tmpfs: [/tmp]
-    networks:
-      outscope-net: {ipv4_address: "${LAB_S14_SECRET_STORE_TARGET:-10.10.2.62}"}
-    healthcheck:
-      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz')"]
-      interval: 3s
-      timeout: 2s
-      retries: 15
-
-  s14-collection-store:
-    profiles: [attack-s14]
-    container_name: ${LAB_S14_COLLECTION_STORE_CONTAINER_NAME:-pgl-node-s14collection}
-    build: {context: ., dockerfile: attack_mock/Dockerfile}
-    environment: {MOCK_ROLE: collection_store, MAX_REQUESTS_PER_TARGET: "200", MAX_AUTH_ATTEMPTS_PER_TARGET: "100"}
-    read_only: true
-    cap_drop: [ALL]
-    security_opt: [no-new-privileges:true]
-    pids_limit: 64
-    mem_limit: 128m
-    cpus: 0.5
-    volumes: [s14-collection-store-state:/state]
-    tmpfs: [/tmp]
-    networks:
-      outscope-net: {ipv4_address: "${LAB_S14_COLLECTION_STORE_TARGET:-10.10.2.63}"}
-    healthcheck:
-      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz')"]
-      interval: 3s
-      timeout: 2s
-      retries: 15
-
-  s14-exfiltration-sink:
-    profiles: [attack-s14]
-    container_name: ${LAB_S14_EXFILTRATION_SINK_CONTAINER_NAME:-pgl-node-s14sink}
-    build: {context: ., dockerfile: attack_mock/Dockerfile}
-    environment: {MOCK_ROLE: exfiltration_sink, MAX_REQUESTS_PER_TARGET: "200", MAX_AUTH_ATTEMPTS_PER_TARGET: "100"}
-    read_only: true
-    cap_drop: [ALL]
-    security_opt: [no-new-privileges:true]
-    pids_limit: 64
-    mem_limit: 128m
-    cpus: 0.5
-    volumes: [s14-exfiltration-sink-state:/state]
-    tmpfs: [/tmp]
-    networks:
-      outscope-net: {ipv4_address: "${LAB_S14_EXFILTRATION_SINK_TARGET:-10.10.2.64}"}
-    healthcheck:
-      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz')"]
-      interval: 3s
-      timeout: 2s
-      retries: 15
-
-  s14-impact-resource:
-    profiles: [attack-s14]
-    container_name: ${LAB_S14_IMPACT_RESOURCE_CONTAINER_NAME:-pgl-node-s14impact}
-    build: {context: ., dockerfile: attack_mock/Dockerfile}
-    environment: {MOCK_ROLE: impact_resource, MAX_REQUESTS_PER_TARGET: "200", MAX_AUTH_ATTEMPTS_PER_TARGET: "100"}
-    read_only: true
-    cap_drop: [ALL]
-    security_opt: [no-new-privileges:true]
-    pids_limit: 64
-    mem_limit: 128m
-    cpus: 0.5
-    volumes: [s14-impact-resource-state:/state]
-    tmpfs: [/tmp]
-    networks:
-      outscope-net: {ipv4_address: "${LAB_S14_IMPACT_RESOURCE_TARGET:-10.10.2.65}"}
-    healthcheck:
-      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz')"]
+      test: [CMD-SHELL, "nc -z 127.0.0.1 22"]
       interval: 3s
       timeout: 2s
       retries: 15
@@ -566,9 +482,5 @@ volumes:
   cia-confidentiality-state:
   cia-integrity-state:
   cia-availability-state:
-  s14-identity-state:
-  s14-secondary-state:
-  s14-secret-store-state:
-  s14-collection-store-state:
-  s14-exfiltration-sink-state:
-  s14-impact-resource-state:
+  s14-web-state:
+  s14-host-state:

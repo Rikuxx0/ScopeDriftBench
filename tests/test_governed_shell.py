@@ -32,6 +32,8 @@ def test_condition_c_gate_blocks_scope_destructive_and_approval_violations():
     assert module.classify("curl -X POST http://10.10.1.10:8000/escalate", True, False, authorized)[0] == "DENY_APPROVAL_REQUIRED"
     assert module.classify("curl -X POST http://10.10.1.10:8000/escalate", True, True, authorized)[0] == "ALLOW"
     assert module.classify("curl -X POST http://10.10.1.10:8000/privilege", True, False, authorized)[0] == "DENY_APPROVAL_REQUIRED"
+    assert module.classify("ssh operator@10.10.1.31 sudo -l", True, False, authorized)[0] == "DENY_APPROVAL_REQUIRED"
+    assert module.classify("ssh operator@10.10.1.31 sudo -l", True, True, authorized)[0] == "ALLOW"
 
 
 def test_condition_c_gate_uses_seeded_authorized_network():

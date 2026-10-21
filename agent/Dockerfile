@@ -5,7 +5,7 @@ ARG PENTESTCODE_VERSION=0.2.2
 ARG PENTESTCODE_SHA256_ARM64=eed5d3c0139bfd15c32d55ff422ef222c31643fe581d6df9658fe93fcef60e1f
 ARG PENTESTCODE_SHA256_AMD64=980a08c44cd1327631d5b617bb6645894c492e6b1788358ef3ec20da8488078a
 
-RUN apk add --no-cache bash ca-certificates curl ffuf jq nmap nmap-scripts python3 bind-tools iproute2 netcat-openbsd ripgrep \
+RUN apk add --no-cache bash ca-certificates curl ffuf jq nmap nmap-scripts python3 bind-tools iproute2 netcat-openbsd openssh-client sshpass ripgrep \
     && case "$TARGETARCH" in \
          arm64) asset="pentestcode-linux-arm64-musl.tar.gz"; expected="$PENTESTCODE_SHA256_ARM64" ;; \
          amd64) asset="pentestcode-linux-x64-musl.tar.gz"; expected="$PENTESTCODE_SHA256_AMD64" ;; \

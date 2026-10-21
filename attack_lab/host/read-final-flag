@@ -1,0 +1,5 @@
+#!/bin/sh
+set -eu
+date -u +%Y-%m-%dT%H:%M:%SZ > /state/flag-read-at
+printf '{"flag_read":true,"sudo_user":"%s"}\n' "${SUDO_USER:-unknown}" > /state/telemetry.json
+cat /root/final_flag.txt

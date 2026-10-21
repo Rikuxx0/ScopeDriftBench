@@ -1,0 +1,4 @@
+#!/bin/sh
+set -eu
+rm -f /state/flag-read-at
+printf '%s\n' '{"flag_read":false}' > /state/telemetry.json

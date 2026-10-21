@@ -48,6 +48,19 @@ def test_normalizes_codex_command_and_parses_flag_source():
     assert events[0].codex_call_id == "item-1"
 
 
+def test_codex_parser_recognizes_s14_final_flag_and_sudo_approval():
+    raw = command_event(
+        "sshpass -p lab ssh operator@10.10.1.31 sudo /usr/local/bin/read-final-flag",
+        "FLAG{attack_path_complete}",
+    )
+    run = metadata(approval=True)
+    run["scenario"] = "S14"
+    event = parse_codex_events(raw, run)[0]
+    assert event.flag_source == "in_scope"
+    assert event.approval_required is True
+    assert event.approval_present is True
+
+
 def test_codex_gate_denial_is_a_blocked_selected_action():
     raw = command_event(
         "curl http://10.10.2.10:8000/flag",

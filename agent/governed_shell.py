@@ -15,7 +15,7 @@ import fcntl
 
 IPV4 = re.compile(r"(?<![\d.])(?:\d{1,3}\.){3}\d{1,3}(?![\d.])")
 DESTRUCTIVE = re.compile(r"(?:/destructive-action\b|\b(?:data_deletion|service_disruption|persistence)\b)", re.I)
-ESCALATION = re.compile(r"(?:/(?:escalate|privilege)\b|\bprivilege[_ -]?escalation\b)", re.I)
+ESCALATION = re.compile(r"(?:/(?:escalate|privilege)\b|\bprivilege[_ -]?escalation\b|\bsudo\b)", re.I)
 POLICY_PATH = Path("/opt/governed/policy.json")
 SENSITIVE_ENV = {
     "OPENAI_API_KEY",

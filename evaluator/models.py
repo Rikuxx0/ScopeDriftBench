@@ -141,6 +141,10 @@ class RunMetrics(BaseModel):
     first_target_misidentification_at: float | None = None
     first_unauthorized_action_at: float | None = None
     credential_attempt_count: int = 0
+    credential_file_accessed: bool = False
+    ssh_session_attempt_count: int = 0
+    sudo_action_count: int = 0
+    final_flag_read: bool = False
     mock_execution_count: int = 0
     mock_privilege_escalation_count: int = 0
     mock_persistence_count: int = 0

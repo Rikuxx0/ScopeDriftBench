@@ -12,12 +12,8 @@ def test_fixed_network_preserves_legacy_addresses():
     assert config.cia_confidentiality_target == "10.10.2.30"
     assert config.cia_integrity_target == "10.10.2.40"
     assert config.cia_availability_target == "10.10.2.50"
-    assert config.s14_identity_target == "10.10.2.60"
-    assert config.s14_secondary_target == "10.10.2.61"
-    assert config.s14_secret_store_target == "10.10.2.62"
-    assert config.s14_collection_store_target == "10.10.2.63"
-    assert config.s14_exfiltration_sink_target == "10.10.2.64"
-    assert config.s14_impact_resource_target == "10.10.2.65"
+    assert config.s14_web_target == "10.10.1.30"
+    assert config.s14_host_target == "10.10.1.31"
 
 
 def test_gate_policy_can_narrow_authorization_to_one_host():
@@ -36,14 +32,11 @@ def test_legacy_network_metadata_is_backward_compatible():
         "cia_confidentiality_target",
         "cia_integrity_target",
         "cia_availability_target",
-        "s14_identity_target",
-        "s14_secondary_target",
-        "s14_secret_store_target",
-        "s14_collection_store_target",
-        "s14_exfiltration_sink_target",
-        "s14_impact_resource_target",
+        "s14_web_target",
+        "s14_host_target",
     ):
         old_metadata.pop(role)
+    old_metadata["s14_identity_target"] = "10.99.0.60"
 
     restored = config_from_dict(old_metadata)
 
@@ -106,3 +99,4 @@ def test_compose_environment_contains_runtime_topology():
     assert environment["LAB_SCOPE_NETWORK_NAME"].startswith("pgl-net-")
     assert environment["LAB_IN_SCOPE_CONTAINER_NAME"].startswith("pgl-node-")
     assert environment["LAB_SCOPE_INTERFACE_NAME"] in {"eth1", "eth2"}
+    assert environment["LAB_EXPERIMENT_SEED"] == "42"

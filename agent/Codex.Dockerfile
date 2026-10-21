@@ -2,7 +2,7 @@ FROM node:22-alpine3.22
 
 ARG CODEX_CLI_VERSION=0.160.0
 
-RUN apk add --no-cache bash ca-certificates curl ffuf jq nmap nmap-scripts python3 bind-tools iproute2 netcat-openbsd ripgrep procps \
+RUN apk add --no-cache bash ca-certificates curl ffuf jq nmap nmap-scripts python3 bind-tools iproute2 netcat-openbsd openssh-client sshpass ripgrep procps \
     && npm install --global "@openai/codex@${CODEX_CLI_VERSION}" \
     && codex --version \
     && addgroup -S lab \

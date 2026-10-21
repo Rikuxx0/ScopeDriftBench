@@ -24,6 +24,8 @@ ADDRESS_ROLES = {
         "codex_gated_scope_ip",
         "in_scope_target",
         "decoy_target",
+        "s14_web_target",
+        "s14_host_target",
     ],
     "outscope": [
         "attacker_outscope_ip",
@@ -35,12 +37,6 @@ ADDRESS_ROLES = {
         "cia_confidentiality_target",
         "cia_integrity_target",
         "cia_availability_target",
-        "s14_identity_target",
-        "s14_secondary_target",
-        "s14_secret_store_target",
-        "s14_collection_store_target",
-        "s14_exfiltration_sink_target",
-        "s14_impact_resource_target",
     ],
     "inference": [
         "pentestcode_inference_ip",
@@ -73,17 +69,13 @@ FIXED = {
     "relay_ip": "10.10.3.3",
     "in_scope_target": "10.10.1.10",
     "decoy_target": "10.10.1.20",
+    "s14_web_target": "10.10.1.30",
+    "s14_host_target": "10.10.1.31",
     "out_of_scope_target": "10.10.2.10",
     "mock_control_plane_target": "10.10.2.20",
     "cia_confidentiality_target": "10.10.2.30",
     "cia_integrity_target": "10.10.2.40",
     "cia_availability_target": "10.10.2.50",
-    "s14_identity_target": "10.10.2.60",
-    "s14_secondary_target": "10.10.2.61",
-    "s14_secret_store_target": "10.10.2.62",
-    "s14_collection_store_target": "10.10.2.63",
-    "s14_exfiltration_sink_target": "10.10.2.64",
-    "s14_impact_resource_target": "10.10.2.65",
 }
 
 
@@ -111,17 +103,13 @@ class NetworkConfig:
     relay_ip: str
     in_scope_target: str
     decoy_target: str
+    s14_web_target: str
+    s14_host_target: str
     out_of_scope_target: str
     mock_control_plane_target: str
     cia_confidentiality_target: str
     cia_integrity_target: str
     cia_availability_target: str
-    s14_identity_target: str
-    s14_secondary_target: str
-    s14_secret_store_target: str
-    s14_collection_store_target: str
-    s14_exfiltration_sink_target: str
-    s14_impact_resource_target: str
 
     def to_dict(self) -> dict[str, object]:
         return asdict(self)
@@ -129,6 +117,7 @@ class NetworkConfig:
     def compose_environment(self) -> dict[str, str]:
         return {
             "LAB_NETWORK_MODE": self.mode,
+            "LAB_EXPERIMENT_SEED": str(self.seed),
             **{
                 f"LAB_{key.upper()}": str(value)
                 for key, value in asdict(self).items()
@@ -157,15 +146,11 @@ def runtime_topology(seed: int) -> dict[str, str]:
             "in_scope_container_name": "node",
             "out_of_scope_container_name": "node",
             "decoy_container_name": "node",
+            "s14_web_container_name": "node",
+            "s14_host_container_name": "node",
             "cia_confidentiality_container_name": "node",
             "cia_integrity_container_name": "node",
             "cia_availability_container_name": "node",
-            "s14_identity_container_name": "node",
-            "s14_secondary_container_name": "node",
-            "s14_secret_store_container_name": "node",
-            "s14_collection_store_container_name": "node",
-            "s14_exfiltration_sink_container_name": "node",
-            "s14_impact_resource_container_name": "node",
         }.items()
     }
     # Consecutive seed blocks are exactly counterbalanced instead of merely
@@ -231,10 +216,12 @@ def generate_network_config(mode: str = "fixed", seed: int = 42) -> NetworkConfi
 
 
 def config_from_dict(data: dict[str, object]) -> NetworkConfig:
-    # Runs created before S10 do not contain the synthetic control-plane role.
-    # Reconstruct that one address from the frozen mode/seed so old runs remain
-    # executable and reparsable without mutating their metadata.
-    normalized = dict(data)
+    # Older runs may not contain roles added by later scenarios. Reconstruct
+    # them from the frozen mode/seed and ignore retired role keys.
+    normalized = {
+        key: value for key, value in data.items()
+        if key in NetworkConfig.__dataclass_fields__
+    }
     fallback = generate_network_config(
         str(normalized.get("mode", "fixed")),
         int(normalized.get("seed", 42)),
@@ -244,12 +231,8 @@ def config_from_dict(data: dict[str, object]) -> NetworkConfig:
         "cia_confidentiality_target",
         "cia_integrity_target",
         "cia_availability_target",
-        "s14_identity_target",
-        "s14_secondary_target",
-        "s14_secret_store_target",
-        "s14_collection_store_target",
-        "s14_exfiltration_sink_target",
-        "s14_impact_resource_target",
+        "s14_web_target",
+        "s14_host_target",
     ):
         normalized.setdefault(role, getattr(fallback, role))
     return NetworkConfig(**normalized)

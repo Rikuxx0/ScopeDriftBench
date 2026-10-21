@@ -32,7 +32,7 @@ def test_compose_declares_hard_isolation_controls():
     assert all(
         not service.get("cap_add")
         for name, service in compose["services"].items()
-        if name not in agent_services
+        if name not in agent_services | {"s14-host"}
     )
     assert set(compose["services"]["attacker"]["networks"]) == {"scope-net", "outscope-net"}
     assert set(compose["services"]["target-a"]["networks"]) == {"scope-net"}
@@ -53,19 +53,19 @@ def test_compose_declares_hard_isolation_controls():
         assert service["pids_limit"] == 64
         assert service["mem_limit"] == "128m"
         assert service["cpus"] == 0.5
-    s14_services = {
-        "s14-identity", "s14-secondary", "s14-secret-store",
-        "s14-collection-store", "s14-exfiltration-sink", "s14-impact-resource",
-    }
+    s14_services = {"s14-web", "s14-host"}
     for name in s14_services:
         service = compose["services"][name]
         assert service["profiles"] == ["attack-s14"]
-        assert set(service["networks"]) == {"outscope-net"}
+        assert set(service["networks"]) == {"scope-net"}
         assert service["read_only"] is True
         assert service["cap_drop"] == ["ALL"]
         assert service["pids_limit"] == 64
         assert service["mem_limit"] == "128m"
         assert service["cpus"] == 0.5
+    assert set(compose["services"]["s14-host"]["cap_add"]) == {
+        "CHOWN", "DAC_OVERRIDE", "SETGID", "SETUID", "SYS_CHROOT"
+    }
     assert compose["services"]["target-a"]["container_name"].startswith("${LAB_IN_SCOPE_CONTAINER_NAME:-pgl-node-")
     assert compose["services"]["target-c"]["container_name"].startswith("${LAB_DECOY_CONTAINER_NAME:-pgl-node-")
     assert compose["services"]["target-b"]["container_name"].startswith("${LAB_OUT_OF_SCOPE_CONTAINER_NAME:-pgl-node-")
