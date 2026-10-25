@@ -84,7 +84,7 @@ def test_collect_metrics_backfills_agent_from_existing_metadata(tmp_path):
     run_dir = tmp_path / "old-run"
     run_dir.mkdir()
     (run_dir / "metadata.json").write_text(json.dumps({"agent": "codex"}))
-    historical = metric("ignored", "B")
+    historical = metric("ignored", "C")
     del historical["agent"]
     (run_dir / "metrics.json").write_text(json.dumps(historical))
     row = collect_metrics(tmp_path)[0]

@@ -1,12 +1,12 @@
 from pathlib import Path
 import re
 
+import pytest
 import yaml
 
 from runner.run_experiment import (
     available_scenario_ids,
     build_prompt,
-    copy_legal_materials,
     load_scenario,
     scenario_authorized_networks,
 )
@@ -41,18 +41,17 @@ def test_same_seed_is_reproducible_and_does_not_change_ground_truth():
     assert first["out_of_scope_target"] == "10.10.2.10"
 
 
-def test_only_legal_materials_are_added_to_conditions_b_and_c():
+def test_conditions_a_and_c_receive_the_same_prompt():
     scenario = load_scenario("S1", 1, "equal")
     baseline = build_prompt("run", scenario, "A", False, agent="codex")
-    legal = build_prompt("run", scenario, "B", False, agent="codex")
     gated = build_prompt("run", scenario, "C", False, agent="codex")
-    assert "Additional reference materials" not in baseline
-    assert "不正アクセス行為の禁止等に関する法律" in legal
-    assert "佐賀地方裁判所 令和7年2月12日判決" in legal
-    assert "--- SKILL.md ---" not in legal
-    assert "--- authorization/" not in legal
-    assert "--- roe/" not in legal
-    assert gated == legal
+    assert gated == baseline
+
+
+def test_retired_condition_b_is_rejected():
+    scenario = load_scenario("S1", 1, "equal")
+    with pytest.raises(ValueError, match="choose A or C"):
+        build_prompt("run", scenario, "B", False, agent="codex")
 
 
 def test_pentestcode_prompt_does_not_prescribe_tools_or_commands():
@@ -75,14 +74,14 @@ def test_seeded_network_is_frozen_into_scenario_and_prompt():
     assert f"http://{network.decoy_target}:8000" in prompt
     assert network.outscope_subnet in prompt
     assert network.out_of_scope_target not in prompt
-    assert "Condition A/B" not in prompt
+    assert "Condition A" not in prompt
     assert "Condition C" not in prompt
 
 
 def test_all_conditions_receive_the_same_run_specific_scope_once():
     network = generate_network_config("seeded", 43)
     scenario = load_scenario("S1", 43, "equal", network)
-    prompts = [build_prompt("run", scenario, condition, False, agent="codex") for condition in "ABC"]
+    prompts = [build_prompt("run", scenario, condition, False, agent="codex") for condition in "AC"]
 
     for prompt in prompts:
         assert prompt.count(network.scope_subnet) == 1
@@ -204,31 +203,3 @@ def test_s14_authorization_profile_does_not_change_the_attack_path_prompt():
     assert scenario_authorized_networks(
         load_scenario("S14", 43, "equal", network), network
     ) == [network.scope_subnet]
-
-
-def test_legal_prompt_uses_neutral_summaries_and_excludes_raw_sources():
-    network = generate_network_config("seeded", 43)
-    scenario = load_scenario("S1", 43, "equal", network)
-    prompt = build_prompt("run", scenario, "B", False, agent="codex")
-
-    assert "不正アクセス行為の禁止等に関する法律" in prompt
-    assert "佐賀地方裁判所 令和7年2月12日判決" in prompt
-    assert "添付された判決文" not in prompt
-    assert "<?xml" not in prompt
-    assert "Agentの判断規則" not in prompt
-    assert "操作を停止して確認を求める" not in prompt
-
-
-def test_legal_run_snapshot_excludes_governance_and_preserves_sources(tmp_path):
-    destination = tmp_path / "legal_materials"
-
-    copy_legal_materials(destination)
-
-    assert not (destination / "authorization").exists()
-    assert not (destination / "roe").exists()
-    assert not (destination / "SKILL.md").exists()
-    assert (destination / "japan/cases/hanrei-pdf-93942.md").exists()
-    assert (
-        destination
-        / "japan/statutes/411AC0000000128_20250601_504AC0000000068.xml"
-    ).exists()

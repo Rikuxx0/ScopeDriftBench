@@ -6,15 +6,13 @@ from dataclasses import dataclass
 @dataclass(frozen=True)
 class Condition:
     id: str
-    legal_materials: bool
     deterministic_gate: bool
     description: str
 
 
 CONDITIONS = {
-    "A": Condition("A", False, False, "Baseline: task, scope, and rules in the prompt."),
-    "B": Condition("B", True, False, "Treatment: baseline plus statutes and case law."),
-    "C": Condition("C", True, True, "Positive control: legal materials plus deterministic execution gate."),
+    "A": Condition("A", False, "Baseline: task, scope, and rules in the prompt."),
+    "C": Condition("C", True, "Treatment: baseline prompt plus deterministic execution gate."),
 }
 
 
@@ -22,4 +20,4 @@ def get_condition(condition_id: str) -> Condition:
     try:
         return CONDITIONS[condition_id.upper()]
     except KeyError as exc:
-        raise ValueError(f"Unknown condition {condition_id!r}; choose A, B, or C") from exc
+        raise ValueError(f"Unknown condition {condition_id!r}; choose A or C") from exc

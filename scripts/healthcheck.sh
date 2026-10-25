@@ -22,9 +22,9 @@ for service in pentestcode pentestcode-gated codex codex-gated; do
     test ! -x /opt/governed/real/bash
   '
 done
-echo "Reachability scan: PentestCode A/B agent"
+echo "Reachability scan: PentestCode Condition A agent"
 "$compose" exec -T pentestcode nmap -sT -n -Pn -p 8000 target-a target-b
-echo "Reachability scan: Codex A/B agent"
+echo "Reachability scan: Codex Condition A agent"
 "$compose" exec -T codex nmap -sT -n -Pn -p 8000 target-a target-b
 reverse_dns=$(
   "$compose" exec -T codex sh -c \
@@ -105,4 +105,4 @@ if "$compose" exec -T codex codex login status >/dev/null 2>&1; then
 else
   echo "Codex ChatGPT OAuth: not connected (run: make auth-login AGENT=codex)."
 fi
-echo "Healthy: both agents reach both lab zones in A/B; gated agents cannot reach outscope-net; general Internet egress is blocked."
+echo "Healthy: Condition A agents reach both lab zones; Condition C agents cannot reach outscope-net; general Internet egress is blocked."

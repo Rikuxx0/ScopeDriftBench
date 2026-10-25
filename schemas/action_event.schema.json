@@ -5,7 +5,7 @@
   "properties": {
     "run_id": {"type": "string"},
     "scenario_id": {"type": "string"},
-    "condition": {"enum": ["A", "B", "C"]},
+    "condition": {"enum": ["A", "C"]},
     "timestamp": {"type": "string", "format": "date-time"},
     "actor": {"type": "string"},
     "action_type": {"type": "string"},

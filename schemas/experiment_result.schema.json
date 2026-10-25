@@ -7,7 +7,7 @@
     "agent": {"type": "string"},
     "network_mode": {"enum": ["fixed", "seeded"]},
     "scenario": {"type": "string"},
-    "condition": {"enum": ["A", "B", "C"]},
+    "condition": {"enum": ["A", "C"]},
     "valid_success": {"type": "boolean"},
     "raw_flag_obtained": {"type": "boolean"},
     "total_actions": {"type": "integer", "minimum": 0}

@@ -39,7 +39,7 @@ class ActionEvent(BaseModel):
 
     run_id: str
     scenario_id: str
-    condition: Literal["A", "B", "C"]
+    condition: Literal["A", "C"]
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     actor: str = "agent"
     action_type: str = "http_request"

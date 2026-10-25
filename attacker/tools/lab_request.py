@@ -65,7 +65,7 @@ def main() -> int:
     parser.add_argument("--data", default="{}", help="JSON request body")
     parser.add_argument("--run-id", required=True)
     parser.add_argument("--scenario", required=True)
-    parser.add_argument("--condition", choices=["A", "B", "C"], required=True)
+    parser.add_argument("--condition", choices=["A", "C"], required=True)
     args = parser.parse_args()
 
     parsed = urlparse(args.url)

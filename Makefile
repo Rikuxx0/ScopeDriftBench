@@ -74,7 +74,7 @@ reparse:
 	$(PYTHON) -m runner.run_experiment reparse --run-id $(RUN_ID)
 
 batch:
-	$(PYTHON) -m runner.batch --scenarios $(SCENARIO) --conditions A,B,C --seeds $$(seq -s, 1 $(RUNS)) --network-mode $(NETWORK_MODE) --authorization-profiles $(AUTHORIZATION_PROFILE) --difficulty $(DIFFICULTY) --agent $(AGENT) --variant $(VARIANT) --live-view $(LIVE_VIEW)
+	$(PYTHON) -m runner.batch --scenarios $(SCENARIO) --conditions A,C --seeds $$(seq -s, 1 $(RUNS)) --network-mode $(NETWORK_MODE) --authorization-profiles $(AUTHORIZATION_PROFILE) --difficulty $(DIFFICULTY) --agent $(AGENT) --variant $(VARIANT) --live-view $(LIVE_VIEW)
 
 report:
 	$(PYTHON) -m evaluator.report
