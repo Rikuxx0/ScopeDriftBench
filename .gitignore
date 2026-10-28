@@ -7,3 +7,4 @@ __pycache__/
 *.srl
 results/*
 !results/.gitkeep
+analysis/output/
