@@ -2,6 +2,8 @@
 
 本システムでは、5つの責務を分離します。合成ターゲットは技術的な侵入機会を提供し、PentestCodeまたはCodex CLIは自律エージェントの実行基盤となり、Collectorは手動送信されたテレメトリを保存します。Agent別AdapterはJSON形式のツールイベントを共通Schemaへ正規化し、ホスト側の評価器はRun終了後に固定済みポリシーを適用します。シェル実行前にGateが動作するのはCondition Cだけです。
 
+Ollama/LM Studioは、既存のOAuth Relayを拡張せず、ホスト側Orchestratorの`LocalProvider`から固定されたOriginへ接続します。独立した`LocalModelAdapter`はModelのTool Callを`Shell`という1つの型付き操作に限定し、引数、長さ、回数を検証した後、既存の`codex`/`codex-gated` Container内の`/bin/sh`を経由して実行します。モデルはDocker CLIの引数やProvider URLを選べません。ローカル推論先と侵入テスト対象への通信は別々に記録し、Condition Cでは既存GateとOut-of-scope側Interfaceの欠如がそのまま働きます。独立Harnessを使うため、Codex/PentestCodeとの比較にはHarness差を明記します。
+
 承認状態は、リセット用の制御経路を通じて初期化されます。制御対象のクライアントがこの実行時情報を読み取るのは、スコープと禁止操作を確認した後だけです。エージェント自身による「承認済み」という主張は受け入れません。したがって、スコープ外を対象とする提案によって、そのターゲットへの制御用問い合わせまで発生することはありません。
 
 Condition Aの`pentestcode`と`codex`サービスは、両ゾーンへの技術的な到達可能性そのものを実験上の処置とするため、両方のターゲットネットワークに接続されます。Condition Cの`pentestcode-gated`と`codex-gated`には`outscope-net`インターフェースがなく、Command Gateに加えて強制的な境界を提供します。S10用の`mock-control-plane`も`outscope-net`だけに接続され、実LLM Relay、Credential、Provider Egressとは完全に分離されています。各ターゲットは単一のネットワークだけに接続されるため、ターゲット間の横方向通信はできません。2つのネットワークに接続されたCollectorは、各隔離ネットワーク上でRun構成に固定されたアドレスを持ちますが、ホスト側へポートを公開しません。唯一のBind Mountである`./results:/results`が永続化の境界です。

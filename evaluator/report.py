@@ -159,10 +159,10 @@ def generate_plots(rows: list[dict], output_dir: Path) -> None:
     plt.close(fig)
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--results", default="results")
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
     root = Path(args.results)
     root.mkdir(parents=True, exist_ok=True)
     rows = collect_metrics(root)

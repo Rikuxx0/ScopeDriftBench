@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import subprocess
 import sys
 import uuid
@@ -22,9 +23,12 @@ from runner.adapters import (
     Experiment,
     ManualAgentAdapter,
     PentestCodeAdapter,
+    LocalModelAdapter,
     parse_codex_events,
+    parse_local_events,
     parse_pentestcode_events,
 )
+from runner.providers import LocalProvider, ProviderError, validate_base_url
 from runner.conditions import get_condition
 from runner.network_config import (
     NetworkConfig,
@@ -50,6 +54,12 @@ CIA_PROFILE_MARKER = ROOT / ".generated/active-cia-profile"
 
 def utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def validate_run_id(run_id: str) -> str:
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,127}", run_id) or run_id in {".", ".."}:
+        raise ValueError("Invalid run ID")
+    return run_id
 
 
 def scenario_path(scenario_id: str) -> Path:
@@ -391,6 +401,16 @@ def snapshot_s14_telemetry(run_dir: Path, metadata: dict) -> None:
 def prepare_run(args: argparse.Namespace) -> Path:
     scenario_id = args.scenario.upper()
     condition = get_condition(args.condition.upper())
+    provider_name = getattr(args, "provider", None)
+    if args.agent == "local" and provider_name not in {"ollama", "lmstudio"}:
+        raise ValueError("Local harness requires --provider ollama or lmstudio")
+    if args.agent in {"codex", "pentestcode"} and provider_name not in {None, "codex_oauth"}:
+        raise ValueError(f"{args.agent} supports only the ChatGPT OAuth route")
+    provider_url = getattr(args, "provider_url", None)
+    if provider_url is not None:
+        if args.agent != "local":
+            raise ValueError("Provider URL is only valid for the local harness")
+        validate_base_url(provider_url)
     network = generate_network_config(getattr(args, "network_mode", "fixed"), args.seed)
     authorization_profile = getattr(args, "authorization_profile", "ambiguous")
     scenario = load_scenario(
@@ -398,7 +418,7 @@ def prepare_run(args: argparse.Namespace) -> Path:
     )
     approval = bool(args.approval or scenario.get("privilege_escalation_authorized", False))
     authorized_networks = scenario_authorized_networks(scenario, network)
-    run_id = args.run_id or str(uuid.uuid4())
+    run_id = validate_run_id(args.run_id or str(uuid.uuid4()))
     run_dir = ROOT / "results" / run_id
     run_dir.mkdir(parents=True, exist_ok=False)
     metadata = {
@@ -415,6 +435,25 @@ def prepare_run(args: argparse.Namespace) -> Path:
         "network": network.to_dict(),
         "approval": approval,
         "agent": args.agent,
+        "harness": "local" if args.agent == "local" else ("codex-cli" if args.agent == "codex" else "pentestcode" if args.agent == "pentestcode" else "manual"),
+        "harness_version": ("0.160.0" if args.agent == "codex" else "0.2.2" if args.agent == "pentestcode" else "1" if args.agent == "local" else None),
+        "harness_system_prompt": None,
+        "harness_system_prompt_sha256": None,
+        "harness_tools": None,
+        "provider": getattr(args, "provider", None) or ("codex_oauth" if args.agent in {"codex", "pentestcode"} else None),
+        "provider_version": None,
+        "provider_endpoint": provider_url,
+        "model_id": getattr(args, "model", None),
+        "model_revision": None,
+        "quantization": None,
+        "generation_parameters": ({
+            "temperature": getattr(args, "temperature", None),
+            "max_output_tokens": getattr(args, "max_output_tokens", None),
+            "request_timeout_seconds": getattr(args, "request_timeout_seconds", 120),
+        } if args.agent == "local" else None),
+        "tool_calling_mode": None,
+        "experiment_seed": args.seed,
+        "comparison": getattr(args, "comparison", None),
         "pentestcode_primary": "pentest" if args.agent == "pentestcode" else None,
         "model": "researcher-supplied" if args.agent == "manual" else None,
         "model_variant": getattr(args, "variant", None) if args.agent in {"pentestcode", "codex"} else None,
@@ -448,7 +487,7 @@ def prepare_run(args: argparse.Namespace) -> Path:
         message = adapter.run(prompt)
         initial_output = adapter.collect_output()
     else:
-        agent_name = "PentestCode" if args.agent == "pentestcode" else "Codex"
+        agent_name = {"pentestcode": "PentestCode", "codex": "Codex", "local": "Local model"}[args.agent]
         message = f"{agent_name} execution prepared. Run the execute command after the isolated lab is healthy."
         initial_output = f"{agent_name} has not been executed yet.\n"
     (run_dir / "agent_output.txt").write_text(initial_output, encoding="utf-8")
@@ -469,6 +508,7 @@ def prepare_run(args: argparse.Namespace) -> Path:
 
 
 def evaluate_run(run_id: str) -> Path:
+    validate_run_id(run_id)
     run_dir = ROOT / "results" / run_id
     metadata_path = run_dir / "metadata.json"
     if not metadata_path.exists():
@@ -562,7 +602,11 @@ def evaluate_run(run_id: str) -> Path:
     return run_dir
 
 
-def execute_run(run_id: str, model: str, variant: str, live_view: str, timeout: int) -> Path:
+def execute_run(run_id: str, model: str, variant: str, live_view: str, timeout: int,
+                *, provider: str | None = None, provider_url: str | None = None,
+                temperature: float | None = None, max_output_tokens: int | None = None,
+                request_timeout_seconds: float = 120) -> Path:
+    validate_run_id(run_id)
     run_dir = ROOT / "results" / run_id
     metadata_path = run_dir / "metadata.json"
     if not metadata_path.exists():
@@ -570,11 +614,29 @@ def execute_run(run_id: str, model: str, variant: str, live_view: str, timeout: 
     metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
     get_condition(metadata["condition"])
     agent = metadata.get("agent")
-    if agent not in {"pentestcode", "codex"}:
+    if agent not in {"pentestcode", "codex", "local"}:
         raise ValueError("Run was not prepared for an autonomous CLI adapter")
-    trace = run_dir / ("pentestcode_trace.jsonl" if agent == "pentestcode" else "codex_trace.jsonl")
+    trace = run_dir / {"pentestcode": "pentestcode_trace.jsonl", "codex": "codex_trace.jsonl",
+                       "local": "local_trace.jsonl"}[agent]
     if trace.exists() and trace.stat().st_size:
         raise FileExistsError(f"{agent} trace already exists: {trace}")
+    local_provider = None
+    if agent == "local":
+        if variant != "none":
+            raise ValueError("Local harness does not support --variant; use --variant none and inference parameters")
+        selected = provider or metadata.get("provider")
+        provider_url = provider_url or metadata.get("provider_endpoint")
+        if selected not in {"ollama", "lmstudio"} or not provider_url:
+            raise ValueError("Local runs require an Ollama/LM Studio provider and a configured endpoint")
+        local_provider = LocalProvider(selected, provider_url, timeout=request_timeout_seconds)
+        # Fail before resetting the lab if the server/model is unavailable.
+        local_provider.select_model(model)
+    elif provider not in {None, "codex_oauth"}:
+        raise ValueError(f"{agent} supports only the existing ChatGPT OAuth route")
+    else:
+        metadata.update(provider="codex_oauth", model_id=model,
+                        tool_calling_mode="harness_native",
+                        generation_parameters={"variant": variant, "timeout_seconds": timeout})
     network_data = metadata.get("network")
     if isinstance(network_data, dict):
         network = config_from_dict(network_data)
@@ -594,7 +656,12 @@ def execute_run(run_id: str, model: str, variant: str, live_view: str, timeout: 
     adapter_class = PentestCodeAdapter if agent == "pentestcode" else CodexAdapter
     if metadata.get("scenario") == "S14":
         timeout = min(timeout, 300)
-    adapter = adapter_class(model=model, variant=variant, live_view=live_view, timeout=timeout)
+    adapter = (
+        LocalModelAdapter(provider=local_provider, model=model, live_view=live_view, timeout=timeout,
+                          temperature=temperature, max_output_tokens=max_output_tokens)
+        if agent == "local" else
+        adapter_class(model=model, variant=variant, live_view=live_view, timeout=timeout)
+    )
     adapter.prepare(Experiment(run_id, run_dir, metadata))
     try:
         adapter.run(prompt)
@@ -611,12 +678,17 @@ def execute_run(run_id: str, model: str, variant: str, live_view: str, timeout: 
             (run_dir / "agent_output.txt").write_text(adapter.collect_output(), encoding="utf-8")
         metadata.update(
             status="interrupted" if isinstance(exc, KeyboardInterrupt) else "execution_failed",
-            model=f"openai/{model}",
+            model=f"{metadata.get('provider') or 'openai'}/{model}" if agent == "local" else f"openai/{model}",
+            model_id=model,
             model_variant=variant,
             live_view=live_view,
             ended_at=utc_now(),
             execution_error=type(exc).__name__,
             execution_error_message=str(exc),
+            safety_stop_reason=getattr(adapter, "stop_reason", None),
+            failure_category=("capability_failure" if str(getattr(adapter, "stop_reason", "")).startswith("capability_failure")
+                              else "provider_error" if isinstance(exc, ProviderError)
+                              else "execution_error"),
         )
         metadata_path.write_text(json.dumps(metadata, indent=2) + "\n", encoding="utf-8")
         active_marker = ROOT / "results/.active_run"
@@ -628,7 +700,8 @@ def execute_run(run_id: str, model: str, variant: str, live_view: str, timeout: 
     (run_dir / "agent_output.txt").write_text(adapter.collect_output(), encoding="utf-8")
     metadata.update(
         status="executed",
-        model=f"openai/{model}",
+        model=f"{metadata.get('provider') or 'openai'}/{model}" if agent == "local" else f"openai/{model}",
+        model_id=model,
         model_variant=variant,
         live_view=live_view,
         safety_stop_reason=getattr(adapter, "stop_reason", None),
@@ -640,16 +713,19 @@ def execute_run(run_id: str, model: str, variant: str, live_view: str, timeout: 
 
 def reparse_run(run_id: str) -> Path:
     """Regenerate derived events and metrics from the immutable raw trace."""
+    validate_run_id(run_id)
     run_dir = ROOT / "results" / run_id
     metadata_path = run_dir / "metadata.json"
     if not metadata_path.exists():
         raise FileNotFoundError(f"Unknown run: {run_id}")
     metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
     agent = metadata.get("agent")
-    trace_path = run_dir / ("codex_trace.jsonl" if agent == "codex" else "pentestcode_trace.jsonl")
+    trace_path = run_dir / {"codex": "codex_trace.jsonl", "pentestcode": "pentestcode_trace.jsonl",
+                            "local": "local_trace.jsonl"}.get(agent, "pentestcode_trace.jsonl")
     if not trace_path.exists():
         raise FileNotFoundError(f"Run does not have an autonomous agent trace: {run_id}")
-    parser = parse_codex_events if metadata.get("agent") == "codex" else parse_pentestcode_events
+    parser = {"codex": parse_codex_events, "pentestcode": parse_pentestcode_events,
+              "local": parse_local_events}.get(agent, parse_pentestcode_events)
     events = parser(trace_path.read_text(encoding="utf-8"), metadata)
     events_path = run_dir / "events.jsonl"
     events_path.write_text(
@@ -671,7 +747,10 @@ def main() -> int:
     run.add_argument("--authorization-profile", choices=AUTHORIZATION_PROFILES, default="ambiguous")
     run.add_argument("--difficulty", choices=["equal", "in_scope_easier", "out_scope_easier"])
     run.add_argument("--approval", action="store_true")
-    run.add_argument("--agent", choices=["manual", "pentestcode", "codex"], default="pentestcode")
+    run.add_argument("--agent", choices=["manual", "pentestcode", "codex", "local"], default="pentestcode")
+    run.add_argument("--provider", choices=["codex_oauth", "ollama", "lmstudio"])
+    run.add_argument("--provider-url")
+    run.add_argument("--model")
     run.add_argument("--variant", choices=MODEL_VARIANTS, default=os.getenv("AGENT_VARIANT", "medium"))
     run.add_argument("--live-view", choices=["pretty", "json", "both"], default=os.getenv("AGENT_LIVE_VIEW", "pretty"))
     run.add_argument("--run-id")
@@ -686,7 +765,7 @@ def main() -> int:
     execute.add_argument(
         "--variant",
         choices=MODEL_VARIANTS,
-        default=os.getenv("PENTESTCODE_VARIANT", "medium"),
+        default=None,
     )
     execute.add_argument(
         "--live-view",
@@ -694,6 +773,11 @@ def main() -> int:
         default=os.getenv("PENTESTCODE_LIVE_VIEW", "pretty"),
     )
     execute.add_argument("--timeout", type=int, default=1800)
+    execute.add_argument("--provider", choices=["codex_oauth", "ollama", "lmstudio"])
+    execute.add_argument("--provider-url")
+    execute.add_argument("--temperature", type=float)
+    execute.add_argument("--max-output-tokens", type=int)
+    execute.add_argument("--request-timeout-seconds", type=float, default=120)
     dynamic = subparsers.add_parser("dynamic")
     dynamic.add_argument("--scenario", required=True, choices=available_scenario_ids())
     dynamic.add_argument("--condition", required=True, choices=["A", "C"])
@@ -702,13 +786,18 @@ def main() -> int:
     dynamic.add_argument("--authorization-profile", choices=AUTHORIZATION_PROFILES, default="ambiguous")
     dynamic.add_argument("--difficulty", choices=["equal", "in_scope_easier", "out_scope_easier"])
     dynamic.add_argument("--approval", action="store_true")
-    dynamic.add_argument("--agent", choices=["pentestcode", "codex"], default="pentestcode")
+    dynamic.add_argument("--agent", choices=["pentestcode", "codex", "local"], default="pentestcode")
+    dynamic.add_argument("--provider", choices=["codex_oauth", "ollama", "lmstudio"])
+    dynamic.add_argument("--provider-url")
+    dynamic.add_argument("--temperature", type=float)
+    dynamic.add_argument("--max-output-tokens", type=int)
+    dynamic.add_argument("--request-timeout-seconds", type=float, default=120)
     dynamic.add_argument("--run-id")
     dynamic.add_argument("--model", default=os.getenv("PENTESTCODE_MODEL", "gpt-5.6-luna"))
     dynamic.add_argument(
         "--variant",
         choices=MODEL_VARIANTS,
-        default=os.getenv("PENTESTCODE_VARIANT", "medium"),
+        default=None,
     )
     dynamic.add_argument(
         "--live-view",
@@ -718,6 +807,13 @@ def main() -> int:
     dynamic.add_argument("--timeout", type=int, default=1800)
     args = parser.parse_args()
     try:
+        if args.command == "execute" and args.variant is None:
+            validate_run_id(args.run_id)
+            run_path = ROOT / "results" / args.run_id / "metadata.json"
+            agent_type = json.loads(run_path.read_text(encoding="utf-8")).get("agent") if run_path.exists() else None
+            args.variant = "none" if agent_type == "local" else os.getenv("PENTESTCODE_VARIANT", "medium")
+        elif args.command == "dynamic" and args.variant is None:
+            args.variant = "none" if args.agent == "local" else os.getenv("PENTESTCODE_VARIANT", "medium")
         if args.command == "prepare":
             prepare_run(args)
         elif args.command == "evaluate":
@@ -725,12 +821,24 @@ def main() -> int:
         elif args.command == "reparse":
             reparse_run(args.run_id)
         elif args.command == "execute":
-            execute_run(args.run_id, args.model, args.variant, args.live_view, args.timeout)
+            if args.provider or args.provider_url or args.temperature is not None or args.max_output_tokens is not None:
+                execute_run(args.run_id, args.model, args.variant, args.live_view, args.timeout,
+                            provider=args.provider, provider_url=args.provider_url,
+                            temperature=args.temperature, max_output_tokens=args.max_output_tokens,
+                            request_timeout_seconds=args.request_timeout_seconds)
+            else:
+                execute_run(args.run_id, args.model, args.variant, args.live_view, args.timeout)
             evaluate_run(args.run_id)
         else:
             args.no_configure = False
             run_dir = prepare_run(args)
-            execute_run(run_dir.name, args.model, args.variant, args.live_view, args.timeout)
+            if args.agent == "local":
+                execute_run(run_dir.name, args.model, args.variant, args.live_view, args.timeout,
+                            provider=args.provider, provider_url=args.provider_url,
+                            temperature=args.temperature, max_output_tokens=args.max_output_tokens,
+                            request_timeout_seconds=args.request_timeout_seconds)
+            else:
+                execute_run(run_dir.name, args.model, args.variant, args.live_view, args.timeout)
             evaluate_run(run_dir.name)
     except KeyboardInterrupt:
         print("ERROR: experiment interrupted; partial trace was retained", file=sys.stderr)

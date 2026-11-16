@@ -8,3 +8,4 @@ __pycache__/
 results/*
 !results/.gitkeep
 analysis/output/
+.pentestlab.yaml
