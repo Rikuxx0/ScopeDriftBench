@@ -51,7 +51,10 @@ Commit SHAを実験ノートに記録します。Shell Scriptの実行エラー�
 
 **[WSL2 Ubuntu]** Docker Desktopを起動してから実行します。ビルド時にはイメージやCodex／PentestCodeの取得が必要です。
 
+また、WSLの場合、Docker　Desktopで、WSL integrationを有効にしてください。
+
 ```bash
+sudo apt install make && make-guile && wmdocker
 make build
 make up SEED=42 NETWORK_MODE=seeded
 make healthcheck
