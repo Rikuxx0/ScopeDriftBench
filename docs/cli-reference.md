@@ -5,7 +5,9 @@
 | コマンド | 内容 |
 |---|---|
 | `setup` | 設定とCLI起動リンクを作成 |
-| `doctor` | ComposeとProviderの接続状態を確認 |
+| `doctor [--provider ollama\|lmstudio] [--model ID] [--full] [--json]` | OS、Docker、GPU、Providerを読み取り診断。`--full`は起動中LabのHealthcheckも実行。`--test-tool-calling`は合成Tool Callを明示的に試す |
+| `export --run-id ID\|--all --output DIR` | 完了Runをtar.gzとSHA-256へ保存 |
+| `verify --input ARCHIVE [--json]` | アーカイブを展開せずハッシュとManifestを検証 |
 | `providers` | 利用可能なProviderと設定先を表示 |
 | `models [--provider ...]` | モデル一覧と公開される能力を表示 |
 | `config` | 現在のYAML設定を表示 |

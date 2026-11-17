@@ -794,6 +794,12 @@ class LocalModelAdapter(AgentAdapter):
         started = time.monotonic()
         self.deadline = started + self.timeout
         tool_count = 0
+        provider_request_count = 0
+        provider_duration = 0.0
+        tool_duration = 0.0
+        first_tool_seconds = None
+        provider_errors = 0
+        tool_calling_errors = 0
         text_output: list[str] = []
         renderer = PentestLiveTrace(sys.stdout, include_raw=self.live_view == "both")
 
@@ -819,12 +825,20 @@ class LocalModelAdapter(AgentAdapter):
                         raise RuntimeError("Local agent timed out")
                     original_timeout = self.provider.timeout
                     self.provider.timeout = min(original_timeout, max(0.1, self.deadline - time.monotonic()))
+                    infer_started = time.monotonic()
+                    provider_request_count += 1
                     try:
                         answer = self.provider.infer(
                             self.model, messages, [self.TOOL], temperature=self.temperature,
                             max_output_tokens=self.max_output_tokens,
                         )
+                    except ProviderError:
+                        provider_errors += 1
+                        raise
                     finally:
+                        elapsed = time.monotonic() - infer_started
+                        provider_duration += elapsed
+                        emit({"type": "inference_timing", "duration_seconds": elapsed})
                         self.provider.timeout = original_timeout
                     message = answer["message"]
                     content = message.get("content")
@@ -866,9 +880,15 @@ class LocalModelAdapter(AgentAdapter):
                         if not isinstance(call_id, str) or not call_id or len(call_id) > 200:
                             raise ProviderError("Malformed tool call ID")
                         tool_count += 1
+                        if first_tool_seconds is None:
+                            first_tool_seconds = time.monotonic() - started
                         emit({"type": "tool_requested", "callID": call_id,
                               "tool": "shell", "command": command})
+                        tool_started = time.monotonic()
                         code, output = self._execute_tool(command)
+                        tool_elapsed = time.monotonic() - tool_started
+                        tool_duration += tool_elapsed
+                        emit({"type": "tool_timing", "callID": call_id, "duration_seconds": tool_elapsed})
                         denial = re.search(r"POLICY_GATE:(DENY_[A-Z_]+)", output)
                         emit({"type": "gate_decision", "callID": call_id,
                               "decision": denial.group(1) if denial else "not_observed",
@@ -890,11 +910,24 @@ class LocalModelAdapter(AgentAdapter):
                                 return self.output
                 raise RuntimeError("Local agent exceeded turn budget")
             except BaseException as exc:
+                if isinstance(exc, ProviderError) and provider_errors == 0:
+                    tool_calling_errors += 1
                 emit({"type": "harness_status", "status": "failed",
                       "reason": self.stop_reason or type(exc).__name__})
                 self.output = "\n".join(text_output)
                 raise
             finally:
+                self.experiment.metadata["research_timing"] = {
+                    "provider_request_count": provider_request_count,
+                    "provider_round_trip_seconds": provider_duration,
+                    "model_compute_seconds": None,
+                    "tool_call_count": tool_count,
+                    "tool_execution_seconds": tool_duration,
+                    "total_execution_seconds": time.monotonic() - started,
+                    "time_to_first_tool_call_seconds": first_tool_seconds,
+                    "provider_error_count": provider_errors,
+                    "tool_calling_error_count": tool_calling_errors,
+                }
                 # Partial traces remain usable after interruption or provider error.
                 trace.flush()
                 raw = trace_path.read_text(encoding="utf-8")

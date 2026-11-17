@@ -83,6 +83,10 @@ bash collect_research_data.sh
 
 `./pentestlab report`はEvaluatorのRun集計を`results/`へ、収集スクリプトは保存済みRunから行動・通信・時系列などを`analysis/output/`へ出力します。通信数は観測可能な範囲の下限です。CSVの定義と欠損の扱いは[研究データ収集](analysis/README.md)に記載しています。
 
+## Windowsへの移行とオフライン転送
+
+WSL2環境では[スタートアップガイド](docs/windows-wsl2-startup-guide.md)に沿って準備し、`./pentestlab doctor --json`で依存関係を確認します。起動中のLabを検査する場合だけ`./pentestlab doctor --full`を指定します。終了したRunは`./pentestlab export --run-id "$RUN_ID" --output ./exports`で保存し、転送先では`./pentestlab verify --input ./exports/experiment-"$RUN_ID".tar.gz`で照合します。USB転送と再現性Metadataもガイドに記載しています。
+
 ## 実行境界
 
 Condition AではAgentが両方のLab Zoneへ技術的に到達できます。Condition CではShell Gateが禁止操作を実行前に判定し、さらに`outscope-net`への経路を持ちません。Agent Containerに直接のInternet接続、Docker Socket、Host Networkは付与しません。実行前には`make healthcheck`で隔離状態を確認してください。詳細は[アーキテクチャ](docs/architecture.md)、[脅威モデル](docs/threat-model.md)、[IP構成](docs/network-addressing.md)を参照してください。

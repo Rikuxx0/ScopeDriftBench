@@ -9,6 +9,7 @@ import sys
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
+from urllib.parse import urlsplit
 
 import yaml
 
@@ -29,6 +30,7 @@ from runner.adapters import (
     parse_pentestcode_events,
 )
 from runner.providers import LocalProvider, ProviderError, validate_base_url
+from runner.environment import runtime_environment
 from runner.conditions import get_condition
 from runner.network_config import (
     NetworkConfig,
@@ -462,6 +464,32 @@ def prepare_run(args: argparse.Namespace) -> Path:
         "started_at": utc_now(),
         "ended_at": None,
     }
+    try:
+        runtime, collection_errors = runtime_environment(ROOT)
+    except Exception as exc:
+        runtime, collection_errors = {}, {"runtime_environment": type(exc).__name__}
+    metadata["runtime_environment"] = runtime
+    metadata["environment_collection_errors"] = collection_errors
+    metadata["inference_environment"] = {
+        "harness": metadata["harness"], "harness_version": metadata["harness_version"],
+        "provider": metadata["provider"], "provider_version": None,
+        "model_id": metadata["model_id"], "model_revision": None,
+        "quantization": None, "context_window": None,
+        "temperature": getattr(args, "temperature", None) if args.agent == "local" else None,
+        "max_output_tokens": getattr(args, "max_output_tokens", None) if args.agent == "local" else None,
+        "tool_calling_mode": None,
+        "provider_location": ("loopback" if args.agent == "local" and provider_url and
+                              urlsplit(provider_url).hostname in {"localhost", "127.0.0.1", "::1"}
+                              else "remote" if args.agent == "local" else None),
+    }
+    metadata["research_timing"] = {
+        "provider_request_count": None, "provider_round_trip_seconds": None,
+        "model_compute_seconds": None, "tool_call_count": None,
+        "tool_execution_seconds": None, "total_execution_seconds": None,
+        "time_to_first_tool_call_seconds": None,
+        "time_to_first_boundary_violation_seconds": None,
+        "provider_error_count": None, "tool_calling_error_count": None,
+    }
     (run_dir / "metadata.json").write_text(json.dumps(metadata, indent=2) + "\n", encoding="utf-8")
     (run_dir / "scenario.yaml").write_text(yaml.safe_dump(scenario, sort_keys=False), encoding="utf-8")
     run_policy = yaml.safe_load((ROOT / "policies/engagement.yaml").read_text(encoding="utf-8"))
@@ -593,6 +621,11 @@ def evaluate_run(run_id: str) -> Path:
         encoding="utf-8",
     )
     (run_dir / "metrics.json").write_text(metrics.model_dump_json(indent=2) + "\n", encoding="utf-8")
+    if events and violations:
+        indices = [item.event_index for item in violations if item.violation and 0 <= item.event_index < len(events)]
+        if indices:
+            metadata.setdefault("research_timing", {})["time_to_first_boundary_violation_seconds"] = max(
+                0.0, (events[min(indices)].timestamp - events[0].timestamp).total_seconds())
     metadata.update(status="evaluated", ended_at=utc_now())
     metadata_path.write_text(json.dumps(metadata, indent=2) + "\n", encoding="utf-8")
     active_marker = ROOT / "results/.active_run"
@@ -630,7 +663,13 @@ def execute_run(run_id: str, model: str, variant: str, live_view: str, timeout: 
             raise ValueError("Local runs require an Ollama/LM Studio provider and a configured endpoint")
         local_provider = LocalProvider(selected, provider_url, timeout=request_timeout_seconds)
         # Fail before resetting the lab if the server/model is unavailable.
-        local_provider.select_model(model)
+        model_info = local_provider.select_model(model)
+        metadata.setdefault("inference_environment", {}).update(
+            provider=selected, model_id=model, model_revision=model_info.revision,
+            quantization=model_info.quantization, context_window=model_info.context_window,
+            temperature=temperature, max_output_tokens=max_output_tokens,
+            tool_calling_mode="openai_chat_completions_tools",
+        )
     elif provider not in {None, "codex_oauth"}:
         raise ValueError(f"{agent} supports only the existing ChatGPT OAuth route")
     else:
