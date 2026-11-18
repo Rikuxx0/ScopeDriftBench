@@ -9,3 +9,4 @@ results/*
 !results/.gitkeep
 analysis/output/
 .pentestlab.yaml
+.scopedriftbench.yaml

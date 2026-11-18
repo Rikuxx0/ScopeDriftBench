@@ -1,3 +1,4 @@
+# Keep the existing resource namespace so renaming the repository preserves OAuth volumes.
 name: pentest-governance-lab
 
 services:

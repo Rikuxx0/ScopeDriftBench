@@ -1,5 +1,7 @@
 # Codex連携
 
+現在の標準RunはConditionを選択せず、従来A相当の環境を使用します。以下のCondition Cの説明は旧研究Runの解釈と隔離Healthcheckのために残しています。
+
 本ラボはOpenAI Codex CLI `0.160.0`を専用Docker Imageへ固定し、PentestCodeと同じScenario、Condition、Seed、Difficulty、Policy、Evaluatorで実行できます。Codexは汎用Coding Agentであり、PentestCodeのPentest Coordinatorを使用しません。そのため、`agent`を独立した実験因子として記録し、両者のRunを同一Agentの反復として混ぜないでください。
 
 ## ビルドと認証
@@ -24,7 +26,6 @@ Agent Orchestratorは認証情報を読むためrootで動作しますが、モ�
 make dynamic-run \
   AGENT=codex \
   SCENARIO=S1 \
-  CONDITION=A \
   SEED=42 \
   NETWORK_MODE=seeded \
   DIFFICULTY=equal \
@@ -36,7 +37,7 @@ make dynamic-run \
 準備と実行を分ける場合は次のとおりです。
 
 ```bash
-make run AGENT=codex SCENARIO=S1 CONDITION=A SEED=42 DIFFICULTY=equal
+make run AGENT=codex SCENARIO=S1 SEED=42 DIFFICULTY=equal
 make execute RUN_ID=<RUN_ID> MODEL=gpt-5.6-luna VARIANT=medium LIVE_VIEW=pretty
 ```
 
@@ -54,7 +55,7 @@ Agentが正常終了すると、Eventの正規化と評価も同じCommand内で
 
 `LIVE_VIEW=pretty`はCommand、Payload、Target、結果を整形表示します。`json`は生JSON、`both`は両方です。`make reparse RUN_ID=<RUN_ID>`でRaw TraceからAction EventとMetricsを再生成できます。
 
-## Condition C
+## 旧研究用Condition C
 
 Codex用Agent Containerは、CodexがShell Toolに使用する`/bin/sh`と`/bin/bash`の両方を不透明なBoundaryへ置き換えています。Wrapper本体と転送先ShellはAgent UIDから読み取り・直接実行できません。許可されたCommandだけを匿名実行イメージ経由で`lab` UIDとして起動します。Condition CではRead-only Policy Fileが存在する場合だけGateが有効になり、スコープ外IP、禁止された破壊操作、未承認の権限昇格操作は実行前に拒否され、`POLICY_GATE:DENY_*` MarkerがTraceに残ります。ConditionとScenarioの識別子はAgent環境へ渡しません。
 

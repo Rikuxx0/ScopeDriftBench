@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import ipaddress
 import hashlib
+import json
 import os
 import re
 from pathlib import Path
 
 from .common import ARTIFACTS, Run, sha256
+from runner.benchmark_results import is_benchmark_run
 
 
 def discover_runs(root: Path) -> tuple[list[Run], dict]:
@@ -20,6 +22,15 @@ def discover_runs(root: Path) -> tuple[list[Run], dict]:
             if (parent / name).is_symlink():
                 discovery["skipped_symlinks"].append(str(parent / name))
         dirs[:] = sorted(name for name in dirs if not name.startswith(".") and not (parent / name).is_symlink())
+        metadata_path = parent / "metadata.json"
+        if "metadata.json" not in filenames or metadata_path.is_symlink():
+            continue
+        try:
+            metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        if not is_benchmark_run(metadata):
+            continue
         files = {}
         for name in sorted(set(filenames) & ARTIFACTS):
             path = parent / name

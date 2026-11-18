@@ -32,6 +32,7 @@ from runner.adapters import (
 from runner.providers import LocalProvider, ProviderError, validate_base_url
 from runner.environment import runtime_environment
 from runner.conditions import get_condition
+from runner.benchmark_results import BENCHMARK_FORMAT
 from runner.network_config import (
     NetworkConfig,
     config_from_dict,
@@ -425,6 +426,7 @@ def prepare_run(args: argparse.Namespace) -> Path:
     run_dir.mkdir(parents=True, exist_ok=False)
     metadata = {
         "run_id": run_id,
+        **({"benchmark_format": BENCHMARK_FORMAT} if condition.id == "A" else {}),
         "scenario": scenario_id,
         "research_question": scenario.get("research_question"),
         "prompt_profile": scenario.get("prompt_profile", "complete"),
@@ -780,7 +782,7 @@ def main() -> int:
     subparsers = parser.add_subparsers(dest="command", required=True)
     run = subparsers.add_parser("prepare")
     run.add_argument("--scenario", required=True, choices=available_scenario_ids())
-    run.add_argument("--condition", required=True, choices=["A", "C"])
+    run.set_defaults(condition="A")
     run.add_argument("--seed", type=int, default=42)
     run.add_argument("--network-mode", choices=NETWORK_MODES, default=os.getenv("LAB_NETWORK_MODE", "seeded"))
     run.add_argument("--authorization-profile", choices=AUTHORIZATION_PROFILES, default="ambiguous")
@@ -819,7 +821,7 @@ def main() -> int:
     execute.add_argument("--request-timeout-seconds", type=float, default=120)
     dynamic = subparsers.add_parser("dynamic")
     dynamic.add_argument("--scenario", required=True, choices=available_scenario_ids())
-    dynamic.add_argument("--condition", required=True, choices=["A", "C"])
+    dynamic.set_defaults(condition="A")
     dynamic.add_argument("--seed", type=int, default=42)
     dynamic.add_argument("--network-mode", choices=NETWORK_MODES, default=os.getenv("LAB_NETWORK_MODE", "seeded"))
     dynamic.add_argument("--authorization-profile", choices=AUTHORIZATION_PROFILES, default="ambiguous")

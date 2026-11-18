@@ -7,6 +7,8 @@ from collections import defaultdict
 from pathlib import Path
 from statistics import fmean
 
+from runner.benchmark_results import is_benchmark_run
+
 
 SUMMARY_FIELDS = [
     "run_id", "agent", "network_mode", "scenario", "condition", "authorization_profile", "seed", "valid_success",
@@ -38,10 +40,14 @@ SUMMARY_FIELDS = [
 def collect_metrics(results_dir: Path) -> list[dict]:
     rows = []
     for path in sorted(results_dir.glob("*/metrics.json")):
-        row = json.loads(path.read_text(encoding="utf-8"))
         metadata_path = path.with_name("metadata.json")
-        if metadata_path.exists() and ("agent" not in row or "network_mode" not in row):
-            metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+        if not metadata_path.is_file() or path.parent.is_symlink() or metadata_path.is_symlink():
+            continue
+        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+        if not is_benchmark_run(metadata):
+            continue
+        row = json.loads(path.read_text(encoding="utf-8"))
+        if "agent" not in row or "network_mode" not in row:
             row.setdefault("agent", metadata.get("agent", "unknown"))
             row.setdefault("network_mode", metadata.get("network_mode", "fixed"))
         row.setdefault("agent", "unknown")
@@ -119,6 +125,12 @@ def aggregate(rows: list[dict]) -> list[dict]:
 
 
 def generate_plots(rows: list[dict], output_dir: Path) -> None:
+    plot_names = (
+        "task_success_rate.png", "run_violation_rate.png",
+        "mean_actions_to_goal.png", "capability_vs_violation.png",
+    )
+    for name in plot_names:
+        (output_dir / name).unlink(missing_ok=True)
     try:
         import matplotlib.pyplot as plt
     except ImportError:
@@ -126,21 +138,22 @@ def generate_plots(rows: list[dict], output_dir: Path) -> None:
     aggregates = aggregate(rows)
     if not aggregates:
         return
-    conditions = [
-        f"{row['agent']}:{row['network_mode']}:{row['scenario']}:{row['condition']}:{row['authorization_profile']}"
+    task_labels = [
+        f"{row['agent']}:{row['network_mode']}:{row['scenario']}:{row['authorization_profile']}"
+        + (f":legacy-{row['condition']}" if row["condition"] != "A" else "")
         for row in aggregates
     ]
     series = {
-        "task_success_rate": "Task Success Rate vs Condition",
-        "run_violation_rate": "Violation Rate vs Condition",
-        "mean_actions_to_goal": "Actions to Goal vs Condition",
+        "task_success_rate": "Task Success Rate by Task",
+        "run_violation_rate": "Violation Rate by Task",
+        "mean_actions_to_goal": "Actions to Goal by Task",
     }
     for key, title in series.items():
         values = [float(row[key] or 0) for row in aggregates]
         fig, ax = plt.subplots()
-        ax.bar(conditions, values)
+        ax.bar(task_labels, values)
         ax.set_title(title)
-        ax.set_xlabel("Condition")
+        ax.set_xlabel("Agent:Network:Scenario:Authorization Profile")
         ax.set_ylabel(key.replace("_", " ").title())
         fig.tight_layout()
         fig.savefig(output_dir / f"{key}.png")
@@ -150,10 +163,10 @@ def generate_plots(rows: list[dict], output_dir: Path) -> None:
         ax.scatter(
             row["run_violation_rate"],
             row["task_success_rate"],
-            label=f"{row['agent']}:{row['network_mode']}:{row['scenario']}:{row['condition']}:{row['authorization_profile']}",
+            label=f"{row['agent']}:{row['network_mode']}:{row['scenario']}:{row['authorization_profile']}" + (f":legacy-{row['condition']}" if row["condition"] != "A" else ""),
         )
     ax.set(xlabel="Run violation rate", ylabel="Valid task success rate", title="Pentest Capability vs Constraint Violation")
-    ax.legend(title="Agent:Network:Scenario:Condition")
+    ax.legend(title="Agent:Network:Scenario:Authorization Profile")
     fig.tight_layout()
     fig.savefig(output_dir / "capability_vs_violation.png")
     plt.close(fig)

@@ -37,12 +37,12 @@ Pythonは**3.12以上**、Docker Composeは**2.36.0以上**が必要です。`do
 ```bash
 mkdir -p ~/projects
 cd ~/projects
-git clone https://github.com/Rikuxx0/PentestAgent_GovernanceControl_Lab.git
-cd PentestAgent_GovernanceControl_Lab
+git clone https://github.com/Rikuxx0/ScopeDriftBench.git
+cd ScopeDriftBench
 git rev-parse HEAD
 python3 -m venv .venv
 .venv/bin/python -m pip install -r requirements-dev.txt
-./pentestlab setup
+./scopedriftbench setup
 ```
 
 Commit SHAを実験ノートに記録します。Shell Scriptの実行エラーが出たら、Windows側で改行がCRLFに変わっていないか確認します。
@@ -58,8 +58,8 @@ sudo apt install make && make-guile && wmdocker
 make build
 make up SEED=42 NETWORK_MODE=seeded
 make healthcheck
-./pentestlab doctor --json
-./pentestlab doctor --full
+./scopedriftbench doctor --json
+./scopedriftbench doctor --full
 ```
 
 `make healthcheck`はCondition Cの禁止側ネットワークへの到達不能、Shell Gateの拒否、外部Egress遮断などを検査します。`doctor --full`は稼働中Labへ既存Healthcheckを実行しますが、Active Run中はスキップします。`FAIL`があれば開始前に解消してください。GPU未検出の`WARN`は、CPU推論を選ぶ場合は必ずしも障害ではありません。
@@ -77,41 +77,41 @@ curl -fsSL https://ollama.com/install.sh | sh
 ollama --version
 ollama pull '<モデルID>'
 ollama list
-./pentestlab models --provider ollama
+./scopedriftbench models --provider ollama
 ```
 
 サーバーが起動していなければ、systemdを利用する環境では`sudo systemctl start ollama`、そうでなければ別のWSL2ターミナルで`ollama serve`を実行します。既定URLは`http://localhost:11434/v1`です。GPU利用を予定する場合は、対応ドライバーとWSL2からの認識を確認します。`nvidia-smi`でGPUが見えても、推論への使用はProvider側の情報で別途確かめます。
 
 ### B. Windows上のLM Studio／Ollama
 
-**[Windows]** LM StudioはDeveloper画面でLocal Serverを起動し、Tool Calling対応モデルをロードします。OllamaならWindows側でサーバーを起動します。**[WSL2 Ubuntu]**から`./pentestlab models --provider lmstudio`などで到達性を確認します。
+**[Windows]** LM StudioはDeveloper画面でLocal Serverを起動し、Tool Calling対応モデルをロードします。OllamaならWindows側でサーバーを起動します。**[WSL2 Ubuntu]**から`./scopedriftbench models --provider lmstudio`などで到達性を確認します。
 
 LM Studioの既定URLは`http://localhost:1234/v1`、Ollamaは`http://localhost:11434/v1`です。WSL2の通常のNAT構成ではWindows側サーバーに`localhost`で届かない場合があります。Windows 11のmirrored networkingなら双方向で`localhost`を使える構成です。NATでは`ip route show default`でWindows側Gatewayを確認し、Providerがそのアドレスからの接続を受けられるようにします。Windows Firewallは無効化せず、必要な送信元・ポートだけを許可します。到達先が既定と異なる場合はRunの`--provider-url 'http://<Windows側アドレス>:<ポート>/v1'`を指定します。公開ネットワークにAPIを晒さないでください。[MicrosoftのWSLネットワーク説明](https://learn.microsoft.com/en-us/windows/wsl/networking)
 
 **[WSL2 Ubuntu]** モデル一覧でTool Callingが`unknown`なら、次の合成Tool Call診断を実施します。これはモデルへ推論要求を送りますが、Shell Toolは実行しません。
 
 ```bash
-./pentestlab doctor --provider ollama --model '<モデルID>' --test-tool-calling
+./scopedriftbench doctor --provider ollama --model '<モデルID>' --test-tool-calling
 # LM Studioの場合は --provider lmstudio に変更
 ```
 
-`doctor`は`.pentestlab.yaml`のProvider URLを使います。継続して既定以外の接続先を使う場合は、そのファイルの`providers.<名前>.base_url`を設定してから診断してください。
+`doctor`は`.scopedriftbench.yaml`のProvider URLを使います。継続して既定以外の接続先を使う場合は、そのファイルの`providers.<名前>.base_url`を設定してから診断してください。
 
 ## 5. 最初のRunを準備・実行する
 
 **[WSL2 Ubuntu]** Ollamaの例です。`<モデルID>`を一覧で表示された値に置き換えます。**準備と実行は分けます。**
 
 ```bash
-./pentestlab run \
+./scopedriftbench run \
   --harness local --provider ollama --model '<モデルID>' \
-  --scenario S1 --condition A --seed 42 \
+  --scenario S1 --seed 42 \
   --network-mode seeded --difficulty equal --live-view pretty \
   --prepare-only
 RUN_ID="$(cat results/.active_run)"
 cat "results/$RUN_ID/agent_prompt.txt"
 cat "results/$RUN_ID/policy.yaml"
-./pentestlab execute --run-id "$RUN_ID"
-./pentestlab results --run-id "$RUN_ID"
+./scopedriftbench execute --run-id "$RUN_ID"
+./scopedriftbench results --run-id "$RUN_ID"
 ```
 
 LM Studioでは`--provider lmstudio`に変更します。必要なら`run`に`--provider-url`を追加します。`execute`は準備時のRun Metadataを読み、同じHarness・Providerを使います。ローカルモデルに`--variant`は指定しません。Codexを使う場合は[READMEのOAuth手順](../README.md#実験を始める)を参照してください。
@@ -123,29 +123,29 @@ LM Studioでは`--provider lmstudio`に変更します。必要なら`run`に`--
 **[WSL2 Ubuntu]** 評価済みRunをExportします。USBのドライブ文字は環境ごとに異なり、以下の`/mnt/e`は例です。実際のマウント先を確認して変更します。
 
 ```bash
-./pentestlab export --run-id "$RUN_ID" --output ./exports
-./pentestlab verify --input "./exports/experiment-$RUN_ID.tar.gz"
+./scopedriftbench export --run-id "$RUN_ID" --output ./exports
+./scopedriftbench verify --input "./exports/experiment-$RUN_ID.tar.gz"
 ls /mnt
 USB_MOUNT=/mnt/e
 cp "./exports/experiment-$RUN_ID.tar.gz" \
    "./exports/experiment-$RUN_ID.tar.gz.sha256" "$USB_MOUNT/"
-./pentestlab verify --input "$USB_MOUNT/experiment-$RUN_ID.tar.gz"
+./scopedriftbench verify --input "$USB_MOUNT/experiment-$RUN_ID.tar.gz"
 ```
 
 **[Mac・ターミナル]** USBから両ファイルをコピーし、Python依存関係を導入したこのリポジトリで実行します。VerifyにDockerやLLM Providerの起動は不要です。
 
 ```bash
-./pentestlab verify --input '/コピー先/experiment-<Run ID>.tar.gz' --json
+./scopedriftbench verify --input '/コピー先/experiment-<Run ID>.tar.gz' --json
 ```
 
 Verifyに成功したら、**[Mac・ターミナル]**で新しい分析用ディレクトリへ展開し、既存の収集スクリプトへ渡します。`<Run ID>`とアーカイブの場所は実際の値に置き換えてください。
 
 ```bash
-mkdir -p ~/pentestlab-analysis/imported
-tar -xzf '/コピー先/experiment-<Run ID>.tar.gz' -C ~/pentestlab-analysis/imported
+mkdir -p ~/scopedriftbench-analysis/imported
+tar -xzf '/コピー先/experiment-<Run ID>.tar.gz' -C ~/scopedriftbench-analysis/imported
 ./collect_research_data.sh \
-  --results-dir ~/pentestlab-analysis/imported/runs \
-  --output-dir ~/pentestlab-analysis/output
+  --results-dir ~/scopedriftbench-analysis/imported/runs \
+  --output-dir ~/scopedriftbench-analysis/output
 ```
 
 Exportは`results/`の原本を変更せず、Run内の許可されたファイルだけを収集します。`--all`は評価済みRunのみ、単一Runでは失敗・中断時の部分Traceも対象にできます。ManifestにはRun ID、評価状態、Commit SHA、Model／Provider／Harness、ファイルごとのサイズとSHA-256が入り、隣の`.sha256`はアーカイブ全体を照合します。**SHA-256は完全性の確認であり、送信元の真正性は証明しません。** Raw TraceにTokenやCookieが含まれ得るため、USBは暗号化して管理します。認証用Named Volume、`.env`、CA秘密鍵はExport対象外です。
@@ -158,7 +158,7 @@ Exportは`results/`の原本を変更せず、Run内の許可されたファイ�
 - `inference_environment`：Harness、Provider、Model ID、取得できたRevision・量子化・Context Window、推論パラメータ、Tool Calling方式、Providerの位置区分。CredentialやProvider URLはこの項目へ保存しません。
 - `research_timing`：観測できたProvider要求回数と往復待ち時間、Tool Call数と実行時間など。モデル内部の純粋な計算時間を取得できなければ`null`です。推論の待ち時間、Tool実行時間、HTTPリクエスト数、Agentターン数を同一指標として扱わないでください。
 
-MacとWindowsの結果を比較する場合は、Scenario、Condition、Seed、Promptだけでなく、モデル実体、量子化、GPU、Docker／WSL、Harness版を揃えるか、交絡要因として記録します。
+MacとWindowsの結果を比較する場合は、Scenario、Seed、Promptだけでなく、モデル実体、量子化、GPU、Docker／WSL、Harness版を揃えるか、交絡要因として記録します。
 
 ## トラブル時の確認順
 

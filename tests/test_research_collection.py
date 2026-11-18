@@ -9,6 +9,7 @@ import pytest
 from analysis.collect_runs import collect, main
 from analysis.common import iso, time_value
 from analysis.validate_data import validate_output
+from runner.benchmark_results import BENCHMARK_FORMAT
 
 
 START = datetime(2026, 10, 1, tzinfo=timezone.utc).timestamp()
@@ -22,7 +23,8 @@ def make_run(root, name, run_id, *, scenario="S1", ambiguous=False, tools=(), me
     directory = root / name
     directory.mkdir(parents=True)
     save(directory / "metadata.json", {
-        "run_id": run_id, "scenario": scenario, "condition": "A", "seed": 42,
+        "run_id": run_id, "benchmark_format": BENCHMARK_FORMAT,
+        "scenario": scenario, "condition": "A", "seed": 42,
         "agent": "codex", "network_mode": "seeded", "status": "interrupted",
         "started_at": iso(START - 100), "ended_at": iso(START + 35),
         "network": {"in_scope_target": "10.1.0.2", "cia_availability_target": "10.2.0.3"},
@@ -51,6 +53,20 @@ def make_run(root, name, run_id, *, scenario="S1", ambiguous=False, tools=(), me
 def read(output, name):
     with (output / f"{name}.csv").open(newline="", encoding="utf-8") as handle:
         return list(csv.DictReader(handle))
+
+
+def test_legacy_condition_runs_are_excluded_from_csv_and_manifest(tmp_path):
+    root, output = tmp_path / "results", tmp_path / "output"
+    make_run(root, "current", "current")
+    legacy = make_run(root, "legacy", "legacy")
+    metadata = json.loads((legacy / "metadata.json").read_text())
+    metadata.pop("benchmark_format")
+    save(legacy / "metadata.json", metadata)
+    report = collect(root, output)
+    assert report["discovered_runs"] == 1
+    assert [row["run_id"] for row in read(output, "runs")] == ["current"]
+    manifest = json.loads((output / "manifest.json").read_text())
+    assert all(Path(entry["path"]).parent.name != "legacy" for entry in manifest["inputs"])
 
 
 def test_repeated_nested_runs_profiles_order_and_independent_success(tmp_path):
@@ -150,7 +166,7 @@ def test_no_fake_times_no_fake_counts_and_corrupt_run_continues(tmp_path):
     one = make_run(root, "no-time", "one", tools=[{"time": None, "command": "nmap -p- 10.2.0.3"}])
     records = [json.loads(line) for line in (one / "codex_trace.jsonl").read_text().splitlines() if "command_execution" in line]
     (one / "codex_trace.jsonl").write_text("".join(json.dumps(row) + "\n" for row in records))
-    save(one / "metadata.json", {"run_id": "one", "scenario": "S1", "status": "interrupted"})
+    save(one / "metadata.json", {"run_id": "one", "benchmark_format": BENCHMARK_FORMAT, "scenario": "S1", "status": "interrupted"})
     broken = make_run(root, "broken", "two")
     (broken / "metrics.json").write_text("{broken")
     with (broken / "events.jsonl").open("a") as handle:
@@ -247,7 +263,7 @@ def test_explicit_relative_times_need_no_invented_absolute_epoch(tmp_path):
     root, output = tmp_path / "results", tmp_path / "output"
     directory = make_run(root, "one", "one")
     (directory / "codex_trace.jsonl").unlink()
-    save(directory / "metadata.json", {"run_id": "one", "scenario": "S1", "execution_duration_seconds": 30})
+    save(directory / "metadata.json", {"run_id": "one", "benchmark_format": BENCHMARK_FORMAT, "scenario": "S1", "execution_duration_seconds": 30})
     event = {"run_id": "one", "operation": "GET http://10.2.0.3/", "action_type": "http_request", "target": "10.2.0.3", "elapsed_seconds": 12, "execution_result": "executed"}
     (directory / "events.jsonl").write_text(json.dumps(event) + "\n")
     collect(root, output)

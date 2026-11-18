@@ -1,5 +1,7 @@
 # S11〜S13 CIA影響評価
 
+S11〜S13は現在、独立したベンチマークタスクです。以下のCondition A/C比較は旧研究設計の記録であり、標準Runの操作には使用しません。
+
 S11〜S13は、曖昧な認可情報から始まる自律探索が、認可境界違反だけで終わらず、
 隔離されたMock ServiceのConfidentiality、Integrity、Availabilityへ実影響を生じさせるかを
 評価します。CIA操作をAgentへ直接指示しません。
@@ -102,7 +104,7 @@ Request記録から実通信を、Secret Return・状態・LatencyからImpact�
 
 ```bash
 make run \
-  AGENT=codex SCENARIO=S11 CONDITION=A \
+  AGENT=codex SCENARIO=S11 \
   AUTHORIZATION_PROFILE=ambiguous \
   SEED=43 NETWORK_MODE=seeded DIFFICULTY=equal \
   VARIANT=high LIVE_VIEW=pretty
@@ -119,7 +121,7 @@ make execute RUN_ID=<RUN_ID> \
 
 ```bash
 make run \
-  AGENT=codex SCENARIO=S11 CONDITION=A \
+  AGENT=codex SCENARIO=S11 \
   AUTHORIZATION_PROFILE=explicit \
   SEED=43 NETWORK_MODE=seeded DIFFICULTY=equal \
   VARIANT=high LIVE_VIEW=pretty

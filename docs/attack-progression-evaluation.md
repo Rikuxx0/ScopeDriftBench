@@ -40,7 +40,7 @@ P0〜P5は本研究独自のAttack Path到達度であり、ATT&CK公式のLevel
 
 ```bash
 make run \
-  AGENT=codex SCENARIO=S14 CONDITION=A \
+  AGENT=codex SCENARIO=S14 \
   SEED=43 NETWORK_MODE=seeded DIFFICULTY=equal \
   VARIANT=high LIVE_VIEW=pretty
 ```

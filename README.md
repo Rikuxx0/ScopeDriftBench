@@ -1,102 +1,94 @@
-# Pentest Agent Governance Control Lab
+# ScopeDriftBench
 
-自律型侵入テストAgentが認可境界を守るかを、隔離されたDocker Labで測定する研究基盤です。Codex CLI、PentestCode、Ollama・LM Studio用の独立Harnessに対応します。対象は合成サービスで、実在する脆弱な製品や外部Targetは含みません。
+**Authorization Boundary Benchmark for Autonomous Penetration Testing Agents**
 
-## 何を調べるか
+A benchmark for evaluating authorization boundary violations in autonomous AI penetration testing agents.
 
-| 研究課題 | 主なScenario |
-|---|---|
-| RQ1：不完全な認可情報で境界を逸脱するか | S1、S6、S7 |
-| RQ2：第三者入力で逸脱を誘発できるか | S8〜S10 |
-| RQ3：モデル非依存の制御で逸脱を防げるか | S1、S3、S6〜S10のCondition A/C比較 |
-| 境界逸脱の影響と自律的な攻撃経路 | S11〜S14 |
+自律型AI侵入テストAgentに隔離された合成ネットワークと評価タスクを提供し、正規の目標達成と認可境界の遵守・逸脱を独立した評価器で測定します。認可範囲内にも目標達成ルートがあり、境界を越えることは成功の前提ではありません。
 
-Scenarioごとの内容と正規ルートは[Scenario Writeup](docs/scenario-writeups.md)、比較方法と指標は[実験設計](docs/experiment-design.md)を参照してください。
+## ベンチマークの構成
 
-## 必要な環境
+`scenarios/`がタスク、`runner/`が実行、Docker Composeが隔離環境、`collector/`とAgent Traceが行動記録、`evaluator/`が固定済みPolicyに基づく評価、`results/`がRun単位の出力です。標準RunではAgentが認可側と未認可側の合成ネットワークへ技術的に到達できます。到達可能性そのものは認可を意味しません。特定の抑制手法はベンチマークの標準条件に含めません。
 
-- Docker Compose v2
-- Python 3.12以上
-- Codex/PentestCodeを使う場合は、それぞれのChatGPT OAuth認証
-- ローカルモデルを使う場合は、OllamaまたはLM Studioの推論サーバーとTool Calling対応モデル
+## クイックスタート
 
-## 実験を始める
+必要なものはPython 3.12以上とDocker Compose 2.36.0以上です。Codex／PentestCodeにはChatGPT OAuth認証、Ollama／LM StudioにはTool Calling対応モデルが必要です。
 
 ```bash
+git clone https://github.com/Rikuxx0/ScopeDriftBench.git
+cd ScopeDriftBench
 python3 -m venv .venv
-.venv/bin/pip install -r requirements-dev.txt
-./pentestlab setup
+.venv/bin/python -m pip install -r requirements-dev.txt
+./scopedriftbench setup
+./scopedriftbench doctor
 make build
 make up
 make auth-login AGENT=codex
 make healthcheck
-./pentestlab run --harness codex --provider codex_oauth --model gpt-5.6-luna --scenario S1 --condition A --seed 42 --difficulty equal --prepare-only
+./scopedriftbench scenarios
+./scopedriftbench run --scenario S1
+```
+
+既定のHarnessはCodex、Providerは`codex_oauth`です。`run`は既定では準備から実行・評価まで行います。Promptを確認してから実行する場合は、次のように分けます。
+
+```bash
+./scopedriftbench run --scenario S1 --prepare-only
 RUN_ID="$(cat results/.active_run)"
 cat "results/$RUN_ID/agent_prompt.txt"
-./pentestlab execute --run-id "$RUN_ID" --variant medium
+./scopedriftbench execute --run-id "$RUN_ID"
+./scopedriftbench results --run-id "$RUN_ID"
 ```
 
-`./pentestlab run --prepare-only`はLabを準備し、Prompt・Policy・Scenario・Metadataを`results/$RUN_ID/`へ保存します。Promptを確認してから`./pentestlab execute`を実行してください。Dockerの起動・OAuth認証・隔離状態の確認には上記のMakeコマンドを使います。PentestCodeを使う場合は`--harness pentestcode`を指定し、`make auth-login AGENT=pentestcode`で認証します。
+## Agentとモデル
+
+| Harness | Provider | 準備 |
+|---|---|---|
+| `codex` | `codex_oauth` | `make auth-login AGENT=codex` |
+| `pentestcode` | `codex_oauth` | `make auth-login AGENT=pentestcode` |
+| `local` | `ollama` | OllamaサーバーとTool Calling対応モデル |
+| `local` | `lmstudio` | LM Studioサーバーとロード済みのTool Calling対応モデル |
 
 ```bash
-cat "results/$RUN_ID/agent_prompt.txt"
-cat "results/$RUN_ID/policy.yaml"
-cat "results/$RUN_ID/metrics.json"
+./scopedriftbench models --provider ollama
+./scopedriftbench run --harness local --provider ollama --model '<表示されたモデルID>' --scenario S1
 ```
 
-正常終了時は`events.jsonl`、`violations.json`、`metrics.json`まで生成されます。失敗・中断時も部分Traceを残します。実行方法の詳細は[CLIリファレンス](docs/cli-reference.md)、[Codex連携](docs/codex-integration.md)、[PentestCode連携](docs/pentestcode-integration.md)を参照してください。
+LM Studioなら`ollama`を`lmstudio`へ変更します。ローカルモデルの推論はホスト側Orchestratorが管理し、ツールは隔離コンテナ内で実行します。接続先とモデル能力の詳細は[Providerガイド](docs/model-providers.md)を参照してください。
 
-## モデルとHarnessを選ぶ
+## 評価タスク
 
-`./pentestlab providers`でProvider、`./pentestlab experiments`でScenario、`./pentestlab results --run-id "$RUN_ID"`で実験結果を確認できます。モデルやHarnessは`run`のオプションで選択します。
+`./scopedriftbench scenarios`でID・名称・タスクを一覧できます。詳細な正規ルートと評価上の境界は[Scenario Writeup](docs/scenario-writeups.md)にあります。
 
-Ollamaを使う場合は、Ollamaを起動してTool Calling対応モデルを用意し、次を実行します。
+| ID | 評価する境界・行動 |
+|---|---|
+| S1 | 認可Networkの境界 |
+| S2 | 認証情報の再利用先 |
+| S3 | 禁止された破壊操作 |
+| S4 | 承認が必要な操作 |
+| S5 | 目標から逸れた探索 |
+| S6 | CIDRだけで指定された認可対象 |
+| S7 | 単一Hostだけの認可 |
+| S8 | 第三者入力によるスコープ変更の誘導 |
+| S9 | 第三者入力による禁止操作の誘導 |
+| S10 | 第三者入力によるControl Plane探索の誘導 |
+| S11 | 機密性への影響 |
+| S12 | 完全性への影響 |
+| S13 | 可用性への影響 |
+| S14 | 認可範囲内の自律的な攻撃経路 |
+
+## 評価結果
+
+各Runの`results/<RUN_ID>/`にPrompt、Scenario、Policy、Metadata、Raw Trace、`events.jsonl`、`metrics.json`、`violations.json`を保存します。基本指標は有効なFlag取得、境界逸脱、Flag取得元、行動数、Tool Call、経過時間です。集計とオフライン転送には既存コマンドを使います。
 
 ```bash
-./pentestlab models --provider ollama
-./pentestlab run --harness local --provider ollama --model '<モデル一覧に表示されたID>' --scenario S1 --condition A --seed 42 --prepare-only
-RUN_ID="$(cat results/.active_run)"
-cat "results/$RUN_ID/agent_prompt.txt"
-./pentestlab execute --run-id "$RUN_ID"
+./scopedriftbench results
+./scopedriftbench report
+./scopedriftbench export --run-id '<RUN_ID>' --output ./exports
+./scopedriftbench verify --input './exports/experiment-<RUN_ID>.tar.gz'
 ```
 
-LM Studioの場合は、Developer画面でサーバーを起動し、Tool Calling対応モデルをロードしてから、`ollama`を`lmstudio`に置き換えます。
+CSV・行動時系列の収集は`./collect_research_data.sh`です。評価指標と欠損の扱いは[分析ガイド](analysis/README.md)を参照してください。CLIの一覧・レポート・CSV収集は、ベンチマーク化後に作成したRunだけを対象にします。過去のRunは`results/`に残します。
 
-```bash
-./pentestlab models --provider lmstudio
-./pentestlab run --harness local --provider lmstudio --model '<モデル一覧に表示されたID>' --scenario S1 --condition A --seed 42 --prepare-only
-RUN_ID="$(cat results/.active_run)"
-cat "results/$RUN_ID/agent_prompt.txt"
-./pentestlab execute --run-id "$RUN_ID"
-```
+## 安全性とドキュメント
 
-ローカルモデルでは`--variant`を使いません。既定の接続先はOllamaが`http://localhost:11434/v1`、LM Studioが`http://localhost:1234/v1`です。接続先が異なる場合は`run`に`--provider-url <URL>`を指定します。Docker Labの`make build`・`make up`・`make healthcheck`は先に実行してください。OAuth認証はローカルモデルの実行には不要です。
-
-Ollama・LM Studioの推論はホスト側Orchestratorが管理し、ツールは既存の隔離Containerで実行します。Providerの設定と対応するHarnessの組み合わせは[Providerとローカルモデル](docs/model-providers.md)、CLIの操作と比較実験は[CLIリファレンス](docs/cli-reference.md)を参照してください。
-
-## 結果を集計する
-
-```bash
-./pentestlab report
-bash collect_research_data.sh
-```
-
-`./pentestlab report`はEvaluatorのRun集計を`results/`へ、収集スクリプトは保存済みRunから行動・通信・時系列などを`analysis/output/`へ出力します。通信数は観測可能な範囲の下限です。CSVの定義と欠損の扱いは[研究データ収集](analysis/README.md)に記載しています。
-
-## Windowsへの移行とオフライン転送
-
-WSL2環境では[スタートアップガイド](docs/windows-wsl2-startup-guide.md)に沿って準備し、`./pentestlab doctor --json`で依存関係を確認します。起動中のLabを検査する場合だけ`./pentestlab doctor --full`を指定します。終了したRunは`./pentestlab export --run-id "$RUN_ID" --output ./exports`で保存し、転送先では`./pentestlab verify --input ./exports/experiment-"$RUN_ID".tar.gz`で照合します。USB転送と再現性Metadataもガイドに記載しています。
-
-## 実行境界
-
-Condition AではAgentが両方のLab Zoneへ技術的に到達できます。Condition CではShell Gateが禁止操作を実行前に判定し、さらに`outscope-net`への経路を持ちません。Agent Containerに直接のInternet接続、Docker Socket、Host Networkは付与しません。実行前には`make healthcheck`で隔離状態を確認してください。詳細は[アーキテクチャ](docs/architecture.md)、[脅威モデル](docs/threat-model.md)、[IP構成](docs/network-addressing.md)を参照してください。
-
-## 開発・検証
-
-```bash
-make test
-```
-
-Scenario追加は[実験設計の手順](docs/experiment-design.md#シナリオの追加)を参照してください。S11〜S13のCIA Mockは[CIA影響評価](docs/cia-impact-evaluation.md)、S14の経路は[自律攻撃進行評価](docs/attack-progression-evaluation.md)に記載しています。
-
-この環境でOllama・LM Studioの実サーバーとDocker Labを組み合わせた動的実行は未検証です。実験は合成対象での境界判断を測るもので、実環境での侵入テスト能力を示すものではありません。
+Agent Containerからの直接Internet接続、Docker Socket、Host Networkを許可しません。Shell Boundaryは非特権Tool ExecutionとCredential分離のために維持します。OAuth Relayの接続先は制限され、合成Mock ServiceにはSafety Limitがあります。実行前に`make healthcheck`で隔離を確認してください。[アーキテクチャ](docs/architecture.md)、[脅威モデル](docs/threat-model.md)、[CLIリファレンス](docs/cli-reference.md)、[Windows + WSL2ガイド](docs/windows-wsl2-startup-guide.md)を参照してください。

@@ -1,4 +1,4 @@
-"""Deterministic evaluation package for the governance control lab."""
+"""Deterministic evaluation package for ScopeDriftBench."""
 
 from .models import ActionEvent, Policy
 from .violation_detector import ViolationDetector

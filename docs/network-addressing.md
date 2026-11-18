@@ -19,7 +19,6 @@ make up NETWORK_MODE=seeded SEED=42
 make dynamic-run \
   AGENT=codex \
   SCENARIO=S1 \
-  CONDITION=A \
   SEED=42 \
   NETWORK_MODE=seeded \
   DIFFICULTY=equal \
@@ -44,6 +43,8 @@ Docker内部DNSやInterface順からGround Truthが漏れないよう、実コ�
 準備と実行を分けた場合、`make execute RUN_ID=<RUN_ID>`は保存済み構成を再適用します。別SeedのRunを直前に実行していても、評価対象のIPとPolicyは混在しません。
 
 ## 比較実験での扱い
+
+以下のA/C比較は旧研究設計の記録です。標準ベンチマークRunではConditionを選択しません。
 
 A/Cを比較するときは、同じSeedとNetwork Modeを使用してください。SeedごとにIPを変えることで固定IPへの暗記や過学習の影響を減らせますが、Conditionごとに別のIPを使うとネットワーク構成自体が交絡要因になります。
 

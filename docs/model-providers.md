@@ -1,5 +1,7 @@
 # Model ProviderとAgent Harness
 
+標準ベンチマークRunは従来A相当の環境を使います。本文に残るCondition Cの記述は過去の研究用Runと隔離Healthcheckについての説明です。
+
 Providerは推論先、Harnessはツール選択と実行を管理する実行基盤です。`codex_oauth`は従来のCodex CLI/PentestCodeで動きます。`ollama`と`lmstudio`はホスト側の独立`local` Harnessで動きます。Codex CLIがLM StudioのResponses APIに接続する[公式手段](https://lmstudio.ai/docs/integrations/codex)はありますが、このラボのOAuth Relayと隔離ネットワークを変更せずに導入する検証が済んでいないため、この組み合わせはCLIで拒否します。
 
 | Harness | Provider | 状態 | ツール実行 |
@@ -19,18 +21,18 @@ Run Metadataには`harness`、`harness_version`、`provider`、`provider_version
 
 Ollamaのローカルサーバーは既定で`localhost:11434`を使います。モデルはTool Callingに対応している必要があります。モデル一覧と能力はOllamaの[公式API仕様](https://docs.ollama.com/api/tags)、[Tool Calling説明](https://docs.ollama.com/capabilities/tool-calling)で確認してください。
 
-`.pentestlab.yaml`の`providers.ollama.base_url`は、ホストMacなら`http://localhost:11434/v1`です。別マシンなら、ホスト側から接続できる明示的な推論サーバーのURLを設定します。別マシンのHTTPを公開ネットワークに晒さず、保護された経路を使用してください。
+`.scopedriftbench.yaml`の`providers.ollama.base_url`は、ホストMacなら`http://localhost:11434/v1`です。別マシンなら、ホスト側から接続できる明示的な推論サーバーのURLを設定します。別マシンのHTTPを公開ネットワークに晒さず、保護された経路を使用してください。
 
-この環境で確認したコマンドは`./pentestlab models --provider ollama`です。サーバーが停止している場合は、接続失敗と原因確認の案内を表示しました。サーバー起動後は同じコマンドでモデルID、Context Window、Tool Calling、量子化、ロード状態を確認できます。取得できない項目は`unknown`です。
+この環境で確認したコマンドは`./scopedriftbench models --provider ollama`です。サーバーが停止している場合は、接続失敗と原因確認の案内を表示しました。サーバー起動後は同じコマンドでモデルID、Context Window、Tool Calling、量子化、ロード状態を確認できます。取得できない項目は`unknown`です。
 
 ## LM Studioの準備
 
 LM StudioのDeveloper画面でローカルサーバーを起動し、Tool Calling対応モデルをロードします。既定の接続先は`http://localhost:1234/v1`です。[モデル一覧API](https://lmstudio.ai/docs/developer/rest/list)にはロード状態とTool Use学習情報が含まれます。CLIは未ロードまたはTool Calling非対応と確認されたモデルを拒否します。
 
-`.pentestlab.yaml`の`providers.lmstudio.base_url`をホスト側から接続できる推論サーバーに設定します。別マシン上で動かす場合は、保護された経路を用意してください。Agent Containerから直接接続する構成ではありません。
+`.scopedriftbench.yaml`の`providers.lmstudio.base_url`をホスト側から接続できる推論サーバーに設定します。別マシン上で動かす場合は、保護された経路を用意してください。Agent Containerから直接接続する構成ではありません。
 
-この環境で`./pentestlab models --provider lmstudio`を実行し、サーバー未起動時の接続エラーを確認しました。サーバー起動後は同じコマンドで利用可能なモデル情報を表示します。
+この環境で`./scopedriftbench models --provider lmstudio`を実行し、サーバー未起動時の接続エラーを確認しました。サーバー起動後は同じコマンドで利用可能なモデル情報を表示します。
 
 ## 共通の実験手順と検証範囲
 
-Runの準備には`pentestlab run --harness local --provider <ollama|lmstudio> --model <モデルID> --prepare-only`を使い、表示されたRun IDを`pentestlab execute --run-id <Run ID>`へ渡します。ProviderのHTTP応答、異常応答、Model選択、Tool Call解析、CLI、共通Event生成はMockでテスト済みです。Composeの静的検証は通っています。実ラボは停止中で、両Providerのサーバーも起動していなかったため、実モデルとDockerを組み合わせた動的検証は未実施です。
+Runの準備には`scopedriftbench run --harness local --provider <ollama|lmstudio> --model <モデルID> --prepare-only`を使い、表示されたRun IDを`scopedriftbench execute --run-id <Run ID>`へ渡します。ProviderのHTTP応答、異常応答、Model選択、Tool Call解析、CLI、共通Event生成はMockでテスト済みです。Composeの静的検証は通っています。実ラボは停止中で、両Providerのサーバーも起動していなかったため、実モデルとDockerを組み合わせた動的検証は未実施です。

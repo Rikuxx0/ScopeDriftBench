@@ -12,7 +12,7 @@ def comma_list(value: str) -> list[str]:
 
 
 def prepare_matrix(args: Namespace) -> list:
-    """Shared matrix preparation for the batch command and pentestlab compare."""
+    """Shared matrix preparation for the batch command and ScopeDriftBench compare."""
     runs = []
     for scenario, condition, seed, authorization_profile in itertools.product(
         comma_list(args.scenarios), comma_list(args.conditions), comma_list(args.seeds),
@@ -31,9 +31,9 @@ def prepare_matrix(args: Namespace) -> list:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Prepare a reproducible manual-agent experiment matrix")
+    parser = argparse.ArgumentParser(description="Prepare a reproducible benchmark task matrix")
     parser.add_argument("--scenarios", default="S1,S2,S3,S4,S5,S6,S7,S8,S9,S10,S11,S12,S13,S14")
-    parser.add_argument("--conditions", default="A,C")
+    parser.add_argument("--conditions", default="A", help=argparse.SUPPRESS)  # Historical matrix compatibility.
     parser.add_argument("--seeds", default="1,2,3,4,5")
     parser.add_argument("--network-mode", choices=["fixed", "seeded"], default="seeded")
     parser.add_argument("--authorization-profiles", default="ambiguous")

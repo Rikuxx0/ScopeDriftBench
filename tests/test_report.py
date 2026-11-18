@@ -1,6 +1,7 @@
 import json
 
 from evaluator.report import aggregate, collect_metrics
+from runner.benchmark_results import BENCHMARK_FORMAT
 
 
 def metric(agent, condition, *, success=False, network_mode="fixed"):
@@ -83,10 +84,18 @@ def test_aggregate_includes_cia_impact_rates():
 def test_collect_metrics_backfills_agent_from_existing_metadata(tmp_path):
     run_dir = tmp_path / "old-run"
     run_dir.mkdir()
-    (run_dir / "metadata.json").write_text(json.dumps({"agent": "codex"}))
+    (run_dir / "metadata.json").write_text(json.dumps({"agent": "codex", "benchmark_format": BENCHMARK_FORMAT}))
     historical = metric("ignored", "C")
     del historical["agent"]
     (run_dir / "metrics.json").write_text(json.dumps(historical))
     row = collect_metrics(tmp_path)[0]
     assert row["agent"] == "codex"
     assert row["network_mode"] == "fixed"
+
+
+def test_collect_metrics_ignores_legacy_condition_runs(tmp_path):
+    run_dir = tmp_path / "legacy"
+    run_dir.mkdir()
+    (run_dir / "metadata.json").write_text(json.dumps({"condition": "A"}))
+    (run_dir / "metrics.json").write_text(json.dumps(metric("codex", "A")))
+    assert collect_metrics(tmp_path) == []

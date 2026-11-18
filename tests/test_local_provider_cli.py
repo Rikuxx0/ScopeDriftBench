@@ -247,7 +247,7 @@ def test_local_tools_use_existing_condition_c_container(monkeypatch, tmp_path):
 
 
 def test_cli_interactive_selection(monkeypatch):
-    answers = iter(["3", "1", "1", "S13", "C", "43", "seeded", "equal", "0", "1024", "pretty"])
+    answers = iter(["3", "1", "1", "S13", "n"])
     monkeypatch.setattr("builtins.input", lambda prompt="": next(answers))
     monkeypatch.setattr(pentestlab_cli, "model_rows", lambda config, provider: [{"model_id": "local:7b"}])
     selected = pentestlab_cli.wizard(pentestlab_cli.read_config(Path("/nonexistent")))
@@ -255,7 +255,7 @@ def test_cli_interactive_selection(monkeypatch):
     assert selected["provider"] == "ollama"
     assert selected["model"] == "local:7b"
     assert selected["experiment"]["scenario"] == "S13"
-    assert selected["experiment"]["condition"] == "C"
+    assert "condition" not in selected["experiment"]
 
 
 def test_cli_noninteractive_prepare_and_config(monkeypatch, tmp_path):
@@ -267,8 +267,11 @@ def test_cli_noninteractive_prepare_and_config(monkeypatch, tmp_path):
     recorded = []
     monkeypatch.setattr(pentestlab_cli, "prepare_run", lambda args: recorded.append(args) or Path("/tmp/example-run"))
     assert pentestlab_cli.main(["run", "--non-interactive", "--scenario", "S12",
-                                "--condition", "C", "--prepare-only"]) == 0
-    assert recorded[0].scenario == "S12" and recorded[0].condition == "C"
+                                "--prepare-only"]) == 0
+    assert recorded[0].scenario == "S12" and recorded[0].condition == "A"
+    with pytest.raises(SystemExit) as removed:
+        pentestlab_cli.main(["run", "--condition", "C"])
+    assert removed.value.code == 2
     with pytest.raises(SystemExit) as error:
         pentestlab_cli.main(["run", "--network-mode", "invalid"])
     assert error.value.code == 2
@@ -279,6 +282,7 @@ def test_cli_execute_restores_prepared_local_settings(monkeypatch, tmp_path):
     run_dir.mkdir(parents=True)
     (run_dir / "metadata.json").write_text(json.dumps({
         "run_id": "prepared", "agent": "local", "provider": "lmstudio",
+        "benchmark_format": "authorization-boundary-v1",
         "model_id": "local:8b", "provider_endpoint": "http://127.0.0.1:1234/v1",
         "generation_parameters": {"temperature": 0, "max_output_tokens": 1024,
                                   "request_timeout_seconds": 30},
@@ -296,10 +300,10 @@ def test_cli_execute_restores_prepared_local_settings(monkeypatch, tmp_path):
     assert calls[0][2]["variant"] == "none"
 
 
-def test_results_resolves_historical_renamed_directory(monkeypatch, tmp_path):
+def test_results_resolves_renamed_benchmark_directory(monkeypatch, tmp_path):
     path = tmp_path / "results/S1_old-run-seed43"
     path.mkdir(parents=True)
-    (path / "metadata.json").write_text('{"run_id":"old-run"}')
+    (path / "metadata.json").write_text('{"run_id":"old-run","benchmark_format":"authorization-boundary-v1"}')
     monkeypatch.setattr(pentestlab_cli, "ROOT", tmp_path)
     assert pentestlab_cli.result_directory("old-run") == path
 
