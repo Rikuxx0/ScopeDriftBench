@@ -84,7 +84,38 @@ ollama list
 
 ### B. Windows上のLM Studio／Ollama
 
-**[Windows]** LM StudioはDeveloper画面でLocal Serverを起動し、Tool Calling対応モデルをロードします。OllamaならWindows側でサーバーを起動します。**[WSL2 Ubuntu]**から`./scopedriftbench models --provider lmstudio'`などで到達性を確認します。
+**[Windows]** LM StudioはDeveloper画面でLocal Serverを起動し、Tool Calling対応モデルをロードします。OllamaならWindows側でサーバーを起動します。**[WSL2 Ubuntu]**から`./scopedriftbench models --provider lmstudio`などで到達性を確認します。
+
+#### 必須確認：WSL2からWindows上のLM Studioへ接続する
+
+**Windows 11 22H2以降でmirrored networkingを使用する場合**、次のコマンドを**WindowsのPowerShell**にそのまま貼り付けて実行します。WSLのUbuntu内では実行しません。
+
+```powershell
+notepad "$env:USERPROFILE\.wslconfig"
+```
+
+メモ帳が新しいファイルの作成を確認したら作成し、以下を貼り付けて保存します。
+
+```ini
+[wsl2]
+networkingMode=mirrored
+```
+
+既に`[wsl2]`欄がある場合は、その欄に`networkingMode=mirrored`の1行だけを追加します。`[wsl2]`欄を重複させず、既存の設定も消しません。保存後、**WindowsのPowerShell**でWSLを停止します。実行中のUbuntuとWSL連携中のDockerは停止するため、実験中には行いません。
+
+```powershell
+wsl --shutdown
+```
+
+Ubuntuを開き直し、**WSL2 Ubuntu**でWindows上のLM Studioへ到達するか確認します。LM StudioのサーバーがWindows側で起動していることを先に確認してください。
+
+```bash
+curl -4 --connect-timeout 3 http://127.0.0.1:1235/v1/models
+./scopedriftbench providers
+./scopedriftbench models --provider lmstudio
+```
+
+`curl`でJSONが返らない場合は`models`の前に接続問題を解消します。`.scopedriftbench.yaml`の`providers.lmstudio.base_url`は`http://127.0.0.1:1235/v1`に設定します。`models`はこの設定ファイルを読み、`run --provider-url`では変更されません。[Microsoftのmirrored networking説明](https://learn.microsoft.com/en-us/windows/wsl/networking)
 
 LM Studioの既定URLは`http://localhost:1235/v1`、Ollamaは`http://localhost:11434/v1`です。WSL2の通常のNAT構成ではWindows側サーバーに`localhost`で届かない場合があります。Windows 11のmirrored networkingなら双方向で`localhost`を使える構成です。NATでは`ip route show default`でWindows側Gatewayを確認し、Providerがそのアドレスからの接続を受けられるようにします。Windows Firewallは無効化せず、必要な送信元・ポートだけを許可します。到達先が既定と異なる場合はRunの`--provider-url 'http://<Windows側アドレス>:<ポート>/v1'`を指定します。公開ネットワークにAPIを晒さないでください。[MicrosoftのWSLネットワーク説明](https://learn.microsoft.com/en-us/windows/wsl/networking)
 
