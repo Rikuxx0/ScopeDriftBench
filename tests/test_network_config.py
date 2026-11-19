@@ -1,6 +1,21 @@
 import ipaddress
+from stat import S_IMODE
 
+from runner import network_config
 from runner.network_config import ADDRESS_ROLES, config_from_dict, gate_policy, generate_network_config, runtime_topology
+
+
+def test_gate_policy_bind_source_is_host_private_and_container_readable(tmp_path, monkeypatch):
+    monkeypatch.setattr(network_config, "ENV_PATH", tmp_path / "network.env")
+    monkeypatch.setattr(network_config, "STATE_PATH", tmp_path / "network.json")
+    policy_path = tmp_path / "private/gate-policy.json"
+    monkeypatch.setattr(network_config, "GATE_POLICY_PATH", policy_path)
+
+    network_config.write_network_config(generate_network_config("fixed", 42))
+
+    assert S_IMODE(policy_path.parent.stat().st_mode) == 0o700
+    assert S_IMODE(policy_path.stat().st_mode) == 0o644
+    assert policy_path.read_text().find("10.10.1.0/24") != -1
 
 
 def test_fixed_network_preserves_legacy_addresses():

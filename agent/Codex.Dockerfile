@@ -7,7 +7,8 @@ RUN apk add --no-cache bash ca-certificates curl ffuf jq nmap nmap-scripts pytho
     && codex --version \
     && addgroup -S lab \
     && adduser -S -G lab -h /home/lab lab \
-    && mkdir -p /opt/governed/bin /opt/governed/real /opt/codex-lab /workspace /state /auth \
+    && mkdir -p /opt/governed/bin /opt/governed/real /opt/governed/private /opt/codex-lab /workspace /state /auth \
+    && chmod 0700 /opt/governed/private \
     && mv /bin/bash /opt/governed/real/bash \
     && chmod 0500 /opt/governed/real/bash \
     && chown -R lab:lab /workspace /home/lab

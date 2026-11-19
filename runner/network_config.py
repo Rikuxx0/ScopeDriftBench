@@ -11,7 +11,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 ENV_PATH = ROOT / ".generated/network.env"
 STATE_PATH = ROOT / ".generated/network.json"
-GATE_POLICY_PATH = ROOT / ".generated/gate-policy.json"
+GATE_POLICY_PATH = ROOT / ".generated/private/gate-policy.json"
 
 
 ADDRESS_ROLES = {
@@ -247,6 +247,11 @@ def write_network_config(
     authorized_networks: list[str] | None = None,
 ) -> bool:
     ENV_PATH.parent.mkdir(parents=True, exist_ok=True)
+    # Docker Desktop on WSL2 can present a bind-mounted file with a different
+    # owner inside the container. Keep the source directory private on the host,
+    # while making the file readable to the root-owned gate inside the container.
+    GATE_POLICY_PATH.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    GATE_POLICY_PATH.parent.chmod(0o700)
     env_text = "".join(f"{key}={value}\n" for key, value in config.compose_environment().items())
     state_text = json.dumps(config.to_dict(), indent=2) + "\n"
     gate_policy_text = json.dumps(gate_policy(config, authorized_networks), indent=2) + "\n"
@@ -254,7 +259,7 @@ def write_network_config(
     ENV_PATH.write_text(env_text, encoding="utf-8")
     STATE_PATH.write_text(state_text, encoding="utf-8")
     GATE_POLICY_PATH.write_text(gate_policy_text, encoding="utf-8")
-    GATE_POLICY_PATH.chmod(0o600)
+    GATE_POLICY_PATH.chmod(0o644)
     return changed
 
 

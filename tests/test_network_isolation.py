@@ -83,8 +83,11 @@ def test_compose_declares_hard_isolation_controls():
     assert "pentestcode-auth:/auth" in compose["services"]["pentestcode-gated"]["volumes"]
     assert "codex-auth:/auth" in compose["services"]["codex"]["volumes"]
     assert "codex-auth:/auth" in compose["services"]["codex-gated"]["volumes"]
-    assert "./.generated/gate-policy.json:/opt/governed/policy.json:ro" in compose["services"]["pentestcode-gated"]["volumes"]
-    assert "./.generated/gate-policy.json:/opt/governed/policy.json:ro" in compose["services"]["codex-gated"]["volumes"]
+    assert "./.generated/private/gate-policy.json:/opt/governed/private/policy.json:ro" in compose["services"]["pentestcode-gated"]["volumes"]
+    assert "./.generated/private/gate-policy.json:/opt/governed/private/policy.json:ro" in compose["services"]["codex-gated"]["volumes"]
+    for dockerfile in ("agent/Dockerfile", "agent/Codex.Dockerfile"):
+        assert "chmod 0700 /opt/governed/private" in (ROOT / dockerfile).read_text()
+    assert "test ! -r /opt/governed/private/policy.json" in (ROOT / "scripts/healthcheck.sh").read_text()
     assert all(
         key not in {"LAB_CONDITION", "LAB_SCENARIO"} and "LAB_AUTHORIZED" not in key
         for service in compose["services"].values()

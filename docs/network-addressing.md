@@ -29,7 +29,7 @@ make dynamic-run \
 
 `make dynamic-run`または`make run`だけでも、現在のラボと要求された構成が異なる場合はContainerと内部Networkを自動再作成します。Named Volumeは削除されないため、PentestCodeとCodexのOAuth認証は保持されます。
 
-生成された現在の構成は`.generated/network.json`、Compose向け変数は`.generated/network.env`へ保存されます。Condition CのShell Gateが使う認可済みネットワークは`.generated/gate-policy.json`へ保存され、読み取り専用ファイルとしてGated Agentへマウントされます。Agentの環境変数には認可済みネットワークを定義しません。これらは生成物でありGit管理されません。実験ごとの確定値は次にも保存されます。
+生成された現在の構成は`.generated/network.json`、Compose向け変数は`.generated/network.env`へ保存されます。Condition CのShell Gateが使う認可済みネットワークは`.generated/private/gate-policy.json`へ保存され、読み取り専用ファイルとしてGated Agentのroot専用ディレクトリへマウントされます。Agentの環境変数には認可済みネットワークを定義しません。これらは生成物でありGit管理されません。実験ごとの確定値は次にも保存されます。
 
 Docker内部DNSやInterface順からGround Truthが漏れないよう、実コンテナ名と実ネットワーク名にはSeedから生成した不透明な識別子（`pgl-node-<hash>`、`pgl-net-<hash>`）を使用します。Scope、Out-of-scope、Inferenceの役割を名前には含めません。同じSeedでは同じ対応になり、Seedが変わると対応も変わります。
 

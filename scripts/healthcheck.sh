@@ -18,6 +18,7 @@ for service in pentestcode pentestcode-gated codex codex-gated; do
     test ! -r /bin/sh
     test ! -r /bin/bash
     test ! -r /opt/governed/wrapper
+    test ! -r /opt/governed/private/policy.json
     test ! -x /opt/governed/real/sh
     test ! -x /opt/governed/real/bash
   '

@@ -85,7 +85,7 @@ services:
       - pentestcode-gated-state:/state
       - pentestcode-gated-workspace:/workspace
       - pentestcode-auth:/auth
-      - ./.generated/gate-policy.json:/opt/governed/policy.json:ro
+      - ./.generated/private/gate-policy.json:/opt/governed/private/policy.json:ro
     tmpfs: [/tmp]
     extra_hosts:
       - "auth.openai.com:${LAB_RELAY_IP:-10.10.3.3}"
@@ -165,7 +165,7 @@ services:
       - codex-gated-state:/state
       - codex-gated-workspace:/workspace
       - codex-auth:/auth
-      - ./.generated/gate-policy.json:/opt/governed/policy.json:ro
+      - ./.generated/private/gate-policy.json:/opt/governed/private/policy.json:ro
     tmpfs: [/tmp]
     extra_hosts:
       - "auth.openai.com:${LAB_RELAY_IP:-10.10.3.3}"

@@ -119,6 +119,27 @@ curl -4 --connect-timeout 3 http://127.0.0.1:1235/v1/models
 
 LM Studioの既定URLは`http://localhost:1235/v1`、Ollamaは`http://localhost:11434/v1`です。WSL2の通常のNAT構成ではWindows側サーバーに`localhost`で届かない場合があります。Windows 11のmirrored networkingなら双方向で`localhost`を使える構成です。NATでは`ip route show default`でWindows側Gatewayを確認し、Providerがそのアドレスからの接続を受けられるようにします。Windows Firewallは無効化せず、必要な送信元・ポートだけを許可します。到達先が既定と異なる場合はRunの`--provider-url 'http://<Windows側アドレス>:<ポート>/v1'`を指定します。公開ネットワークにAPIを晒さないでください。[MicrosoftのWSLネットワーク説明](https://learn.microsoft.com/en-us/windows/wsl/networking)
 
+#### 必須確認：LM Studioのモデルをロードする
+
+**WindowsのPowerShell**で実行してください。
+
+```powershell
+lms ls
+lms load
+lms ps
+```
+
+`lms load`で一覧から`qwen3-4b`を選び、`lms ps`に表示されることを確認します。その後、**WSL2 Ubuntu**で再確認します。
+
+```bash
+./scopedriftbench models --provider lmstudio
+./scopedriftbench doctor --provider lmstudio --model qwen3-4b --test-tool-calling
+```
+
+`loaded=True`になればモデル側は準備完了です。別のモデルを選んだ場合は、`--model`にそのモデルIDを指定します。[LM Studioのロード手順](https://lmstudio.ai/docs/cli/local-models/load)
+
+`policy.json: Permission denied`は別のhealthcheckエラーで、モデルをロードしても解消しません。修正済みのコードを取得した後、**WSL2 Ubuntu**で`make build`、`make up`、`make healthcheck`を順に実行してください。これにより、ポリシーの新しいマウント先を持つAgentコンテナと非公開のポリシーファイルが用意されます。healthcheckが成功するまで実験を開始しません。
+
 **[WSL2 Ubuntu]** モデル一覧でTool Callingが`unknown`なら、次の合成Tool Call診断を実施します。これはモデルへ推論要求を送りますが、Shell Toolは実行しません。
 
 ```bash
