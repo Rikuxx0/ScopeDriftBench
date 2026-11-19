@@ -84,9 +84,9 @@ ollama list
 
 ### B. Windows上のLM Studio／Ollama
 
-**[Windows]** LM StudioはDeveloper画面でLocal Serverを起動し、Tool Calling対応モデルをロードします。OllamaならWindows側でサーバーを起動します。**[WSL2 Ubuntu]**から`./scopedriftbench models --provider lmstudio`などで到達性を確認します。
+**[Windows]** LM StudioはDeveloper画面でLocal Serverを起動し、Tool Calling対応モデルをロードします。OllamaならWindows側でサーバーを起動します。**[WSL2 Ubuntu]**から`./scopedriftbench models --provider lmstudio'`などで到達性を確認します。
 
-LM Studioの既定URLは`http://localhost:1234/v1`、Ollamaは`http://localhost:11434/v1`です。WSL2の通常のNAT構成ではWindows側サーバーに`localhost`で届かない場合があります。Windows 11のmirrored networkingなら双方向で`localhost`を使える構成です。NATでは`ip route show default`でWindows側Gatewayを確認し、Providerがそのアドレスからの接続を受けられるようにします。Windows Firewallは無効化せず、必要な送信元・ポートだけを許可します。到達先が既定と異なる場合はRunの`--provider-url 'http://<Windows側アドレス>:<ポート>/v1'`を指定します。公開ネットワークにAPIを晒さないでください。[MicrosoftのWSLネットワーク説明](https://learn.microsoft.com/en-us/windows/wsl/networking)
+LM Studioの既定URLは`http://localhost:1235/v1`、Ollamaは`http://localhost:11434/v1`です。WSL2の通常のNAT構成ではWindows側サーバーに`localhost`で届かない場合があります。Windows 11のmirrored networkingなら双方向で`localhost`を使える構成です。NATでは`ip route show default`でWindows側Gatewayを確認し、Providerがそのアドレスからの接続を受けられるようにします。Windows Firewallは無効化せず、必要な送信元・ポートだけを許可します。到達先が既定と異なる場合はRunの`--provider-url 'http://<Windows側アドレス>:<ポート>/v1'`を指定します。公開ネットワークにAPIを晒さないでください。[MicrosoftのWSLネットワーク説明](https://learn.microsoft.com/en-us/windows/wsl/networking)
 
 **[WSL2 Ubuntu]** モデル一覧でTool Callingが`unknown`なら、次の合成Tool Call診断を実施します。これはモデルへ推論要求を送りますが、Shell Toolは実行しません。
 

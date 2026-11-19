@@ -27,7 +27,7 @@ Ollamaのローカルサーバーは既定で`localhost:11434`を使います。
 
 ## LM Studioの準備
 
-LM StudioのDeveloper画面でローカルサーバーを起動し、Tool Calling対応モデルをロードします。既定の接続先は`http://localhost:1234/v1`です。[モデル一覧API](https://lmstudio.ai/docs/developer/rest/list)にはロード状態とTool Use学習情報が含まれます。CLIは未ロードまたはTool Calling非対応と確認されたモデルを拒否します。
+LM StudioのDeveloper画面でローカルサーバーを起動し、Tool Calling対応モデルをロードします。この環境で使用する既定の接続先は`http://localhost:1235/v1`です。[モデル一覧API](https://lmstudio.ai/docs/developer/rest/list)にはロード状態とTool Use学習情報が含まれます。CLIは未ロードまたはTool Calling非対応と確認されたモデルを拒否します。
 
 `.scopedriftbench.yaml`の`providers.lmstudio.base_url`をホスト側から接続できる推論サーバーに設定します。別マシン上で動かす場合は、保護された経路を用意してください。Agent Containerから直接接続する構成ではありません。
 
