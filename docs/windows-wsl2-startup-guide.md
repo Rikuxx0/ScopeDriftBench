@@ -184,6 +184,14 @@ cp "./exports/experiment-$RUN_ID.tar.gz" \
 ./scopedriftbench verify --input "$USB_MOUNT/experiment-$RUN_ID.tar.gz"
 ```
 
+**[VSCodeなどのIDEを開く場合]**
+
+VSCodeが入っている場合、WSL内から以下のように入力することで、ソースコードの閲覧が可能です。
+
+```bash
+code .
+```
+
 **[Mac・ターミナル]** USBから両ファイルをコピーし、Python依存関係を導入したこのリポジトリで実行します。VerifyにDockerやLLM Providerの起動は不要です。
 
 ```bash
