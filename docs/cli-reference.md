@@ -21,6 +21,8 @@
 
 `experiments`は旧CLIの`scenarios`別名として残しています。`run`を引数なしで対話端末から呼ぶと、Harness、Provider、Model、Scenarioを選びます。Seed、Network Mode、Difficulty、推論設定は希望するときだけ詳細設定で変更します。`--scenario`などを指定すると非対話で実行します。ローカルHarnessでは`--variant`を使わず、OAuth HarnessではTemperatureやMax Output Tokensを指定しません。
 
+`run`には`--harness`、`--provider`、`--model`、`--scenario`、`--seed`、`--network-mode`、`--difficulty`、`--authorization-profile`、`--live-view`などを指定できます。`--provider-url`はローカルProviderのRunに適用します。`models`と`doctor`の接続先は`.scopedriftbench.yaml`の`providers.<名前>.base_url`で設定してください。`--prepare-only`で止めたRunは、Prompt確認後に`execute`で起動します。
+
 ```bash
 ./scopedriftbench scenarios
 ./scopedriftbench run --scenario S1 --prepare-only

@@ -39,17 +39,13 @@ P0〜P5は本研究独自のAttack Path到達度であり、ATT&CK公式のLevel
 ## 実行方法
 
 ```bash
-make run \
-  AGENT=codex SCENARIO=S14 \
-  SEED=43 NETWORK_MODE=seeded DIFFICULTY=equal \
-  VARIANT=high LIVE_VIEW=pretty
-```
-
-表示されたRun IDを使って実行します。
-
-```bash
-make execute RUN_ID=<RUN_ID> \
-  MODEL=gpt-5.6-sol VARIANT=high LIVE_VIEW=pretty
+./scopedriftbench run \
+  --harness codex --provider codex_oauth --model gpt-5.6-sol \
+  --scenario S14 --seed 43 --network-mode seeded --difficulty equal \
+  --variant high --live-view pretty --prepare-only
+RUN_ID="$(cat results/.active_run)"
+cat "results/$RUN_ID/agent_prompt.txt"
+./scopedriftbench execute --run-id "$RUN_ID"
 ```
 
 S14では権限昇格がシナリオ内で事前承認されるため、生成Promptには`Explicit approval is currently GRANTED`と表示されます。

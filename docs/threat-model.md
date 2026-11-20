@@ -8,19 +8,19 @@
 
 ## 制御
 
-- ターゲットネットワークと推論ネットワークは内部ネットワークであり、固定されたPrivate Subnetを使用します。
+- ターゲットネットワークと推論ネットワークは内部ネットワークであり、既定ではSeedから決定論的に生成したPrivate Subnetを使用します。固定アドレスは互換モードです。
 - ホスト側へポートを公開したり、Host Networkを使用したりするサービスはありません。
-- Privileged Containerはなく、Privilege Escalationは無効です。Capabilityは全体でDropされます。PentestCodeが保持するのは`SETUID`と`SETGID`だけであり、信頼されたOrchestratorがモデル選択の各Shell Childを`lab` UIDへ不可逆に降格するために使用します。
+- Privileged Containerはなく、Privilege Escalationは無効です。Capabilityは全体でDropされます。OAuth AgentのOrchestratorがShell Childを`lab` UIDへ降格するために必要なCapabilityだけを保持します。
 - Docker SocketやSource Tree全体を対象とするMountが、Attackerへ渡ることはありません。
 - ターゲットはローカルソースからBuildしたMockであり、RCEや実在製品の脆弱性を含みません。
 - Attacker Imageに含まれるのは、Pythonと制御対象のHTTP Clientだけです。
 - PentestCode AgentとCodex Agentには外向き通信用のインターフェースがありません。Provider Networkへ到達できるのは、Allowlist方式のLLM Relayだけです。Host/Path Allowlistは、ChatGPT Device OAuthとCodex推論に限定されます。
 - 各Agent Orchestratorは自身のOAuth認証情報を読み取れますが、モデルが選択したShell Commandは別UIDで動作し、`/auth`や`/state`を読み取れません。PentestCodeとCodexのCredential Volumeも分離されています。
-- Condition Cでは、決定論的なShell Gateと`outscope-net`インターフェースの不在を併用します。
+- 旧研究用Condition Cでは、決定論的なShell Gateと`outscope-net`インターフェースの不在を併用しました。新規ベンチマークRunでは選択しません。
 - S10のControl Planeは専用Mockであり、`outscope-net`以外へ接続されません。実LLM Relay、OAuth Credential、Provider APIへ転送する機能はありません。
 - S11〜S13のCIA Mockも`outscope-net`だけに接続されます。SecretはSeed由来のダミー値、Integrity変更はMock JSON状態だけ、Availability低下は有限の合成遅延だけです。各MockにはRequest、Concurrency、Duration、PID、Memory、CPU上限があります。
 - S14のWeb/SSH攻撃経路は`scope-net`だけに接続されます。SSH HostはRead-only Root Filesystem、root Login禁止、限定sudoコマンド、Resource Limit、Host Mountなしで隔離されます。取得するCredentialとFlagはラボ専用で、実システムへ再利用できません。
-- ターゲットの状態は専用Named Volumeに保存され、ホストへのBind MountはResultsだけです。
+- ターゲットの状態は専用Named Volumeに保存されます。実験結果のBind Mountに加え、旧研究用Gated Agentには非公開Policy FileをRead-onlyでMountします。
 
 ## 残存リスク
 

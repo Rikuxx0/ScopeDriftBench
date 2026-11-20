@@ -1,6 +1,6 @@
 # Windows 11 + WSL2 実験スタートアップガイド
 
-このガイドは、**WSL2 UbuntuでCLIを操作し、Docker DesktopのLinux Containersで隔離Labを動かす**ための初回手順です。ローカルモデルの推論はWSL2上のOrchestratorからOllama／LM Studioへ送り、Agentのツール操作だけを隔離コンテナで実行します。既存の`llm-relay`はCodex／PentestCodeのOAuth用です。**Windows実機での動的実行は未検証**のため、各確認結果を記録してください。
+このガイドは、**WSL2 UbuntuでCLIを操作し、Docker DesktopのLinux Containersで隔離Labを動かす**ための初回手順です。ローカルモデルの推論はWSL2上のOrchestratorからOllama／LM Studioへ送り、Agentのツール操作だけを隔離コンテナで実行します。既存の`llm-relay`はCodex／PentestCodeのOAuth用です。Windows + WSL2からLM Studioへの疎通、モデルロード、合成Tool Call診断の成功事例があります。**実モデルによるベンチマークの動的Run完走は未確認**のため、各確認結果を記録してください。
 
 実験中に`make up`、`make reset`、別Runの準備を行うと進行中Runの状態が変わり得ます。最初のRunは、ほかの実験が動いていない状態で始めます。
 
@@ -51,10 +51,7 @@ Commit SHAを実験ノートに記録します。Shell Scriptの実行エラー�
 
 **[WSL2 Ubuntu]** Docker Desktopを起動してから実行します。ビルド時にはイメージやCodex／PentestCodeの取得が必要です。
 
-また、WSLの場合、Docker　Desktopで、WSL integrationを有効にしてください。
-
 ```bash
-sudo apt install make && make-guile && wmdocker
 make build
 make up SEED=42 NETWORK_MODE=seeded
 make healthcheck
@@ -68,7 +65,7 @@ make healthcheck
 
 モデルは**Tool Calling対応**のものを選びます。128GBのシステムRAMだけで動作速度を判断せず、GPU型番とVRAM容量を確認します。
 
-### A. WSL2内のOllama（最初に推奨）
+### A. WSL2内のOllama
 
 **[WSL2 Ubuntu]** [Ollama公式手順](https://docs.ollama.com/linux)で導入し、サーバーを起動してモデルを取得します。インストール前に公式手順の内容を確認してください。モデルIDはGPU・VRAMとTool Calling対応を見て選び、`<モデルID>`に入力します。
 
@@ -166,7 +163,7 @@ cat "results/$RUN_ID/policy.yaml"
 ./scopedriftbench results --run-id "$RUN_ID"
 ```
 
-LM Studioでは`--provider lmstudio`に変更します。必要なら`run`に`--provider-url`を追加します。`execute`は準備時のRun Metadataを読み、同じHarness・Providerを使います。ローカルモデルに`--variant`は指定しません。Codexを使う場合は[READMEのOAuth手順](../README.md#実験を始める)を参照してください。
+LM Studioでは`--provider lmstudio`に変更します。必要なら`run`に`--provider-url`を追加します。`execute`は準備時のRun Metadataを読み、同じHarness・Providerを使います。ローカルモデルに`--variant`は指定しません。Codexを使う場合は[READMEのクイックスタート](../README.md#クイックスタート)を参照してください。
 
 `results/$RUN_ID/metadata.json`の`status`が`evaluated`となり、`events.jsonl`、`metrics.json`、`violations.json`、`local_trace.jsonl`が生成されたことを確認します。ファイルの存在だけで実験成立とは判断せず、Traceと評価結果を合わせて確認してください。失敗時は部分Traceとエラー情報を保存し、同じRun IDへ無理に再実行しません。
 

@@ -25,7 +25,7 @@ Benchmark CLI → Scenario + Agent + Model → Agent Harness
 
 Codex CLI／PentestCodeは隔離コンテナ内で実行し、OAuth推論だけを経路制限付きの`llm-relay`へ送ります。Ollama／LM Studioはホスト側Orchestratorの`LocalProvider`から固定したOriginへ接続し、モデルが選んだ型付きShell操作だけを既存の隔離コンテナで実行します。モデルはProvider URLやDocker CLI引数を選べません。
 
-`scope-net`、`outscope-net`、`inference-net`は内部Networkです。AgentとTargetには直接Internet Egress、Docker Socket、Host Networkを付けません。`provider-egress`に接続するのはOAuth Relayだけです。`./results:/results`が唯一のBind Mountで、AgentのCredentialは別々のroot専用Named Volumeに保存されます。Shell Boundaryは標準Runでも非特権の`lab` UIDへの降格、Credentialの分離、環境保護のために維持します。これらはベンチマーク環境の保護であり、Agentのスコープ遵守を代行するGateではありません。
+`scope-net`、`outscope-net`、`inference-net`は内部Networkです。AgentとTargetには直接Internet Egress、Docker Socket、Host Networkを付けません。`provider-egress`に接続するのはOAuth Relayだけです。実験結果は`./results:/results`をBind Mountして保存します。旧研究用のGated Containerには、別途、非公開のGate Policy FileをRead-onlyでMountします。AgentのCredentialは別々のroot専用Named Volumeに保存されます。Shell Boundaryは標準Runでも非特権の`lab` UIDへの降格、Credentialの分離、環境保護のために維持します。これらはベンチマーク環境の保護であり、Agentのスコープ遵守を代行するGateではありません。
 
 過去の研究用Cで使ったGated Container、Policy File、未認可側Interfaceを持たない構成は、隔離Healthcheckと安全機構への依存があるためコード上に残します。**標準ベンチマークRunからは選択しません。** Shell BoundaryとGateを一体で実装した既存イメージを無理に削除すると、非特権Tool実行とCredential保護にも影響するためです。
 

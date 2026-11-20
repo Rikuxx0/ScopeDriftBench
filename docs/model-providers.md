@@ -8,8 +8,8 @@ Providerは推論先、Harnessはツール選択と実行を管理する実行�
 |---|---|---|---|
 | `codex` | `codex_oauth` | 既存経路 | Codex CLI、隔離Container |
 | `pentestcode` | `codex_oauth` | 既存経路 | PentestCode、隔離Container |
-| `local` | `ollama` | Mockで検証済み、実モデル未検証 | 型付き`Shell`、既存Codex Container |
-| `local` | `lmstudio` | Mockで検証済み、実モデル未検証 | 型付き`Shell`、既存Codex Container |
+| `local` | `ollama` | Mockによる経路検証済み。実モデルの動的Runは未確認 | 型付き`Shell`、既存Codex Container |
+| `local` | `lmstudio` | Windows + WSL2で疎通、モデルロード、合成Tool Call診断の成功を確認。動的Runは未確認 | 型付き`Shell`、既存Codex Container |
 
 Ollamaは[OpenAI互換Chat Completions](https://docs.ollama.com/api/openai-compatibility)とモデル一覧用の`/api/tags`、モデル能力用の`/api/show`を使用します。LM Studioは[OpenAI互換Chat Completions](https://lmstudio.ai/docs/developer/openai-compat)と[ネイティブのモデル一覧](https://lmstudio.ai/docs/developer/rest/list)を使用します。返されたTool Calling情報が欠ける場合は`unknown`と表示し、実際のTool Callが得られないRunをCapability Failureとして記録します。モデルにTool Calling非対応が明示されている場合と、LM Studioでモデル未ロードの場合は実行前に拒否します。
 
@@ -31,8 +31,10 @@ LM StudioのDeveloper画面でローカルサーバーを起動し、Tool Callin
 
 `.scopedriftbench.yaml`の`providers.lmstudio.base_url`をホスト側から接続できる推論サーバーに設定します。別マシン上で動かす場合は、保護された経路を用意してください。Agent Containerから直接接続する構成ではありません。
 
-この環境で`./scopedriftbench models --provider lmstudio`を実行し、サーバー未起動時の接続エラーを確認しました。サーバー起動後は同じコマンドで利用可能なモデル情報を表示します。
+Windows + WSL2では、`./scopedriftbench models --provider lmstudio`でモデル一覧、`./scopedriftbench doctor --provider lmstudio --model qwen3-4b --test-tool-calling`で合成Tool Call診断が成功した事例があります。モデルの`loaded=True`も確認済みです。この診断は実際のShell操作やベンチマークの完走を意味しません。Windows側のサーバーへの接続設定とロード手順は[WSL2ガイド](windows-wsl2-startup-guide.md)を参照してください。
+
+`models`と`doctor`は`.scopedriftbench.yaml`の`providers.lmstudio.base_url`を読みます。`run --provider-url`はそのRunにだけ適用され、`models`の接続先は変更しません。
 
 ## 共通の実験手順と検証範囲
 
-Runの準備には`scopedriftbench run --harness local --provider <ollama|lmstudio> --model <モデルID> --prepare-only`を使い、表示されたRun IDを`scopedriftbench execute --run-id <Run ID>`へ渡します。ProviderのHTTP応答、異常応答、Model選択、Tool Call解析、CLI、共通Event生成はMockでテスト済みです。Composeの静的検証は通っています。実ラボは停止中で、両Providerのサーバーも起動していなかったため、実モデルとDockerを組み合わせた動的検証は未実施です。
+Runの準備には`./scopedriftbench run --harness local --provider <ollama|lmstudio> --model <モデルID> --scenario S1 --prepare-only`を使い、`results/.active_run`のRun IDを`./scopedriftbench execute --run-id <Run ID>`へ渡します。ProviderのHTTP応答、異常応答、Model選択、Tool Call解析、CLI、共通Event生成はMockでテスト済みです。Windows + WSL2でのLM Studio疎通と合成Tool Call診断は確認されていますが、実モデルでベンチマークを完走した検証結果はまだありません。

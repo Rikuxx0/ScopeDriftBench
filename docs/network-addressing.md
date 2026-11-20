@@ -1,6 +1,6 @@
 # IPアドレス構成
 
-本ラボは、従来の固定アドレスとSeed連動アドレスの2モードを提供します。
+ScopeDriftBenchは、従来の固定アドレスとSeed連動アドレスの2モードを提供します。
 
 ## Fixed Mode
 
@@ -12,24 +12,21 @@
 
 ## Seeded Mode
 
-`NETWORK_MODE=seeded`が既定値です。SHA-256を使ってSeedから3つの重複しない`10.0.0.0/8`内の`/24`と、各サービスの重複しないHost Addressを生成します。同じSeedと実装Versionからは常に同じ結果が得られます。`make run`や`make dynamic-run`では指定を省略できます。
+`seeded`が既定値です。SHA-256を使ってSeedから3つの重複しない`10.0.0.0/8`内の`/24`と、各サービスの重複しないHost Addressを生成します。同じSeedと実装Versionからは常に同じ結果が得られます。CLIの`--network-mode seeded`は省略できます。
 
 ```bash
 make up NETWORK_MODE=seeded SEED=42
-make dynamic-run \
-  AGENT=codex \
-  SCENARIO=S1 \
-  SEED=42 \
-  NETWORK_MODE=seeded \
-  DIFFICULTY=equal \
-  MODEL=gpt-5.6-terra \
-  VARIANT=low \
-  LIVE_VIEW=pretty
+./scopedriftbench run \
+  --harness codex --provider codex_oauth --model gpt-5.6-terra \
+  --scenario S1 --seed 42 --network-mode seeded --difficulty equal \
+  --variant low --live-view pretty --prepare-only
+RUN_ID="$(cat results/.active_run)"
+./scopedriftbench execute --run-id "$RUN_ID"
 ```
 
-`make dynamic-run`または`make run`だけでも、現在のラボと要求された構成が異なる場合はContainerと内部Networkを自動再作成します。Named Volumeは削除されないため、PentestCodeとCodexのOAuth認証は保持されます。
+CLIの`run`でも、現在のラボと要求された構成が異なる場合はContainerと内部Networkを再構成します。Named Volumeは削除されないため、PentestCodeとCodexのOAuth認証は保持されます。進行中の別Runがある間は再構成しないでください。
 
-生成された現在の構成は`.generated/network.json`、Compose向け変数は`.generated/network.env`へ保存されます。Condition CのShell Gateが使う認可済みネットワークは`.generated/private/gate-policy.json`へ保存され、読み取り専用ファイルとしてGated Agentのroot専用ディレクトリへマウントされます。Agentの環境変数には認可済みネットワークを定義しません。これらは生成物でありGit管理されません。実験ごとの確定値は次にも保存されます。
+生成された現在の構成は`.generated/network.json`、Compose向け変数は`.generated/network.env`へ保存されます。隔離Healthcheckと旧Condition CのShell Gateが使う非公開Policyは`.generated/private/gate-policy.json`へ保存され、Gated Agentに読み取り専用でMountされます。標準RunではCondition Cを選択しません。Agentの環境変数には認可済みネットワークを定義しません。これらは生成物でありGit管理されません。実験ごとの確定値は次にも保存されます。
 
 Docker内部DNSやInterface順からGround Truthが漏れないよう、実コンテナ名と実ネットワーク名にはSeedから生成した不透明な識別子（`pgl-node-<hash>`、`pgl-net-<hash>`）を使用します。Scope、Out-of-scope、Inferenceの役割を名前には含めません。同じSeedでは同じ対応になり、Seedが変わると対応も変わります。
 
@@ -38,9 +35,9 @@ Docker内部DNSやInterface順からGround Truthが漏れないよう、実コ�
 - `results/<RUN_ID>/metadata.json`の`network_mode`と`network`
 - `results/<RUN_ID>/scenario.yaml`のTargetとNetwork
 - `results/<RUN_ID>/policy.yaml`の認可・禁止Network
-- `results/<RUN_ID>/agent_prompt.txt`のScenario固有認可情報（S6はCIDRのみ、S7は単一Hostのみ、それ以外はTarget、Decoy、認可CIDR、禁止CIDR）
+- `results/<RUN_ID>/agent_prompt.txt`のScenarioとAuthorization Profileに応じた認可情報。S6はCIDRのみ、S7は単一Hostのみ、S11〜S13の`ambiguous`は抽象的な内部Network指定です。実際の提示内容をRunごとに確認してください。
 
-準備と実行を分けた場合、`make execute RUN_ID=<RUN_ID>`は保存済み構成を再適用します。別SeedのRunを直前に実行していても、評価対象のIPとPolicyは混在しません。
+準備と実行を分けた場合、`./scopedriftbench execute --run-id "$RUN_ID"`は保存済み構成を再適用します。別SeedのRunを直前に実行していても、評価対象のIPとPolicyは混在しません。
 
 ## 比較実験での扱い
 

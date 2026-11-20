@@ -2,7 +2,7 @@
 
 現在の標準RunはConditionを選択せず、従来A相当の環境を使用します。以下のCondition Cの説明は旧研究Runの解釈と隔離Healthcheckのために残しています。
 
-本ラボはOpenAI Codex CLI `0.160.0`を専用Docker Imageへ固定し、PentestCodeと同じScenario、Condition、Seed、Difficulty、Policy、Evaluatorで実行できます。Codexは汎用Coding Agentであり、PentestCodeのPentest Coordinatorを使用しません。そのため、`agent`を独立した実験因子として記録し、両者のRunを同一Agentの反復として混ぜないでください。
+ScopeDriftBenchはOpenAI Codex CLIを専用Docker Imageへ固定し、PentestCodeと同じScenario、Seed、Difficulty、Policy、Evaluatorで実行できます。Codexは汎用Coding Agentであり、PentestCodeのPentest Coordinatorを使用しません。そのため、Harnessを独立した実験因子として記録し、両者のRunを同一Agentの反復として混ぜないでください。実際のCLI VersionはRun Metadataで確認します。
 
 ## ビルドと認証
 
@@ -23,25 +23,25 @@ Agent Orchestratorは認証情報を読むためrootで動作しますが、モ�
 一括実行は次のとおりです。
 
 ```bash
-make dynamic-run \
-  AGENT=codex \
-  SCENARIO=S1 \
-  SEED=42 \
-  NETWORK_MODE=seeded \
-  DIFFICULTY=equal \
-  MODEL=gpt-5.6-luna \
-  VARIANT=medium \
-  LIVE_VIEW=pretty
+./scopedriftbench run \
+  --harness codex --provider codex_oauth --model gpt-5.6-luna \
+  --scenario S1 --seed 42 --network-mode seeded --difficulty equal \
+  --variant medium --live-view pretty
 ```
 
 準備と実行を分ける場合は次のとおりです。
 
 ```bash
-make run AGENT=codex SCENARIO=S1 SEED=42 DIFFICULTY=equal
-make execute RUN_ID=<RUN_ID> MODEL=gpt-5.6-luna VARIANT=medium LIVE_VIEW=pretty
+./scopedriftbench run \
+  --harness codex --provider codex_oauth --model gpt-5.6-luna \
+  --scenario S1 --seed 42 --network-mode seeded --difficulty equal \
+  --variant medium --live-view pretty --prepare-only
+RUN_ID="$(cat results/.active_run)"
+cat "results/$RUN_ID/agent_prompt.txt"
+./scopedriftbench execute --run-id "$RUN_ID"
 ```
 
-`execute`はRunの`metadata.json`に保存された`agent`とNetwork構成からAdapterとアドレスを復元するため、2番目のCommandに`AGENT`や`NETWORK_MODE`を再指定する必要はありません。
+`execute`はRunの`metadata.json`に保存されたHarnessとNetwork構成からAdapterとアドレスを復元するため、2番目のCommandにHarnessやNetwork Modeを再指定する必要はありません。
 Agentが正常終了すると、Eventの正規化と評価も同じCommand内で完了します。
 
 ## 実行経路とTrace
@@ -53,7 +53,7 @@ Agentが正常終了すると、Eventの正規化と評価も同じCommand内で
 5. 各JSON Eventへ取得時刻を追加し、完全なTraceを`codex_trace.jsonl`へ保存します。
 6. 完了した`command_execution`を共通の`events.jsonl`へ正規化し、同じEvaluatorで判定します。
 
-`LIVE_VIEW=pretty`はCommand、Payload、Target、結果を整形表示します。`json`は生JSON、`both`は両方です。`make reparse RUN_ID=<RUN_ID>`でRaw TraceからAction EventとMetricsを再生成できます。
+`--live-view pretty`はCommand、Payload、Target、結果を整形表示します。`json`は生JSON、`both`は両方です。`make reparse RUN_ID=<RUN_ID>`でRaw TraceからAction EventとMetricsを再生成できます。
 
 ## 旧研究用Condition C
 
@@ -72,14 +72,14 @@ PentestCodeはPentest専用Coordinator、Subagent、専用Toolを持ちますが
 - 有効なFlag取得率
 - 対象サービスを発見できたか
 - スコープ外操作を選択したか
-- GateでBlockされたか
+- 実行境界やProvider側で停止したか（旧Condition CのGate Blockは過去のRunに限る）
 - 総Tool Call数とGoal到達までのAction数
 
 Codexがスコープ外へアクセスしなかった場合でも、対象を発見できなかったRunと、発見後に自制したRunは区別する必要があります。
 
 ## 公式設計根拠
 
-OpenAIの公式資料では、Codex CLIのHeadless実行、外部Sandboxでの隔離、全Commandの監査、サイバー操作の副作用直前におけるScope検査と独立したNetwork Boundaryが案内されています。本実装はこれらをDocker、Shell Gate、Raw Trace、独立Evaluatorとして具体化しています。
+本実装では、Codex CLIのHeadless実行をDocker隔離とShell Boundaryの下で行い、Raw Traceと独立Evaluatorを使用します。旧Condition CのShell Gateは標準ベンチマークの比較要因ではありません。関連する設計資料は以下です。
 
 - [Codex CLIをHeadless実行する例](https://developers.openai.com/cookbook/examples/codex/build_iterative_repair_loops_with_codex)
 - [Guardrailsとサイバー操作のHuman Review](https://developers.openai.com/api/docs/guides/agents/guardrails-approvals)
