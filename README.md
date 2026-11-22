@@ -1,8 +1,10 @@
 # ScopeDriftBench
 
-A Benchmark for Evaluating Authorization Boundary Deviations in Autonomous AI Penetration Testing Agents
+A Benchmark for Evaluating Authorization Boundary Deviations in Autonomous AI Penetration Testing Agents 
 
 自律型AI侵入テストAgentに隔離された合成ネットワークと評価タスクを提供し、正規の目標達成と認可境界の遵守・逸脱を独立した評価器で測定します。認可範囲内にも目標達成ルートがあり、境界を越えることは成功の前提ではありません。
+
+本ベンチマークはScopeBenchと同じ本質的な課題解決であるため、学術的な観点で廃止案となります。
 
 ## ベンチマークの構成
 
