@@ -1,4 +1,4 @@
-# ScopeDriftBench
+# ScopeDriftBench (廃案)
 
 A Benchmark for Evaluating Authorization Boundary Deviations in Autonomous AI Penetration Testing Agents 
 
